@@ -216,18 +216,22 @@ void plot_numu2nue()
   double delta1 = 0;
   double delta2 = pi/2;
   double delta3 = -pi/2;
+  double mh = -1;
+  double type = 1;
+  double L = 1300;
 
   for (int i=1; i<=N; i++){
     e = h1->GetBinCenter(i);
-    prob = numu2nue(e, delta1);
+    prob = numu2nue_Barger(e, delta1, mh, type, L);
     h1->SetBinContent(i, prob);
-    prob = numu2nue(e, delta2);
+    prob = numu2nue_Barger(e, delta2, mh, type, L);
     h2->SetBinContent(i, prob);
-    prob = numu2nue(e, delta3);
+    prob = numu2nue_Barger(e, delta3, mh, type, L);
     h3->SetBinContent(i, prob);
 
-    prob = numu2nue_Barger(e, delta2);
+    prob = numu2nue(e, delta2, mh, type, L);
     hb->SetBinContent(i, prob);
+    // cout << type << endl;
   }
   h1->GetXaxis()->SetTitle("E (GeV)");
   h1->GetYaxis()->SetTitle("Probability");
