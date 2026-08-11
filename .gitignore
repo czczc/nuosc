@@ -38,6 +38,10 @@ test/
 old/
 .vscode/
 
+# throwaway prototypes (captured on branch prototype/3d-viz-gallery) #
+#######################################################################
+prototypes/
+
 # web app (node/vite) #
 #######################
 node_modules/
