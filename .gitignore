@@ -38,6 +38,10 @@ test/
 old/
 .vscode/
 
+# claude code session files (agent worktrees, local settings) #
+################################################################
+.claude/
+
 # throwaway prototypes (captured on branch prototype/3d-viz-gallery) #
 #######################################################################
 prototypes/
