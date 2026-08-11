@@ -422,3 +422,29 @@ function initializeChart() {
 // Initialize the chart when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeChart);
 // Removed duplicated block and extra closing brace
+
+// --- Theme Toggle Logic ---
+const themeToggle = document.getElementById('themeToggle');
+const body = document.body;
+
+// Check for saved theme preference on page load
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme) {
+    body.classList.add(savedTheme);
+} else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    // If no preference saved, check system preference
+    body.classList.add('dark');
+}
+
+
+// Add event listener to the toggle button
+themeToggle.addEventListener('click', () => {
+    body.classList.toggle('dark');
+
+    // Save the current theme preference
+    if (body.classList.contains('dark')) {
+        localStorage.setItem('theme', 'dark');
+    } else {
+        localStorage.removeItem('theme'); // Or set to 'light' if you want to explicitly save light mode
+    }
+});
