@@ -8,6 +8,11 @@ function fmt(v, step) {
   const prec = (String(step ?? 1).split('.')[1] || '').length;
   return Number(v).toFixed(prec);
 }
+
+// range extras may give min/max as (store) => value, e.g. preset-dependent E spans
+function lim(v) {
+  return typeof v === 'function' ? v(store) : v;
+}
 </script>
 
 <template>
@@ -26,7 +31,7 @@ function fmt(v, step) {
       </div>
       <div v-else-if="e.type === 'range'" class="ctl-row">
         <label :for="'x-' + e.key">{{ e.label }}</label>
-        <input :id="'x-' + e.key" v-model.number="vs[e.key]" type="range" :min="e.min" :max="e.max" :step="e.step" />
+        <input :id="'x-' + e.key" v-model.number="vs[e.key]" type="range" :min="lim(e.min)" :max="lim(e.max)" :step="e.step" />
         <span class="val">{{ fmt(vs[e.key], e.step) }}</span>
       </div>
     </template>

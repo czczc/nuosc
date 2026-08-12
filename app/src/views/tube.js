@@ -6,7 +6,8 @@
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { hamiltonian, eigH, prob } from '../engines/jacobi.js';
-import { engineParams } from '../engines/constants.js';
+import { engineParams, eRangeOf, lRangeOf } from '../engines/constants.js';
+import { plot2d, legend } from './plot2d.js';
 
 // world extents: x = L over [-SX/2, SX/2], y = stacked flavor fraction (P=1 -> SY), z = extrusion
 const SX = 10, SY = 2.5, HD = 0.15; // HD = half depth of the band extrusion
@@ -39,8 +40,8 @@ export default {
         { value: 'bands', label: 'stacked bands' },
       ],
     },
-    { key: 'E', type: 'range', label: 'E [GeV]', min: 0.2, max: 6, step: 0.01 },
-    { key: 'Lmax', type: 'range', label: 'L max [km]', min: 500, max: 10000, step: 100 },
+    { key: 'E', type: 'range', label: 'E [GeV]', min: (s) => eRangeOf(s.basePreset)[0], max: (s) => eRangeOf(s.basePreset)[1], step: 0.01 },
+    { key: 'Lmax', type: 'range', label: 'L max [km]', min: 100, max: (s) => lRangeOf(s.basePreset)[1], step: 5 },
     { key: 'play', type: 'checkbox', label: 'play' },
     { key: 'marker', type: 'range', label: 'marker', min: 0, max: 1, step: 0.002 },
   ],
@@ -274,34 +275,33 @@ export default {
         cums[0][i] = pe; cums[1][i] = pe + pm; cums[2][i] = pe + pm + pt;
       }
 
-      const PT = 20 * dpr, PB = 6 * dpr;
-      const yOf = (p) => h - PB - (h - PT - PB) * p;
-      const xOf = (i) => w * i / (NPT - 1);
+      const P = plot2d(ctx, w, h, dpr, { x: [0, st.Lmax], y: [0, 1], xTitle: 'L [km]', yTitle: 'P(νμ→να)' });
+      const xOf = (i) => P.X((i / (NPT - 1)) * st.Lmax);
       for (let k = 0; k < 3; k++) {
         const lo = k === 0 ? null : cums[k - 1], hi = cums[k];
         ctx.fillStyle = FLAVOR_HEX[k];
         ctx.beginPath();
         for (let i = 0; i < NPT; i++) {
-          const y = yOf(hi[i]);
-          if (i === 0) ctx.moveTo(0, y); else ctx.lineTo(xOf(i), y);
+          const y = P.Y(hi[i]);
+          if (i === 0) ctx.moveTo(xOf(0), y); else ctx.lineTo(xOf(i), y);
         }
-        for (let i = NPT - 1; i >= 0; i--) ctx.lineTo(xOf(i), yOf(lo ? lo[i] : 0));
+        for (let i = NPT - 1; i >= 0; i--) ctx.lineTo(xOf(i), P.Y(lo ? lo[i] : 0));
         ctx.closePath();
         ctx.fill();
       }
+      P.frame(); // the stacked fills cover the frame edges
 
       // white vertical marker line at the marker fraction (allowed: markerDriven)
-      const mx = w * st.marker;
+      const mx = P.X(st.marker * st.Lmax);
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = dpr;
-      ctx.beginPath(); ctx.moveTo(mx, PT); ctx.lineTo(mx, h - PB); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
 
-      ctx.font = `${10 * dpr}px ui-monospace, monospace`;
-      ctx.fillStyle = '#9aa7b5';
-      ctx.fillText(`P(νμ→να) vs L [0–${st.Lmax} km] · total = 1`, 8 * dpr, 14 * dpr);
-      ctx.fillStyle = FLAVOR_HEX[0]; ctx.fillText('νe', w - 66 * dpr, 14 * dpr);
-      ctx.fillStyle = FLAVOR_HEX[1]; ctx.fillText('νμ', w - 44 * dpr, 14 * dpr);
-      ctx.fillStyle = FLAVOR_HEX[2]; ctx.fillText('ντ', w - 22 * dpr, 14 * dpr);
+      legend(ctx, dpr, P, [
+        { label: 'νe', color: FLAVOR_HEX[0] },
+        { label: 'νμ', color: FLAVOR_HEX[1] },
+        { label: 'ντ', color: FLAVOR_HEX[2] },
+      ]);
     },
   },
 };

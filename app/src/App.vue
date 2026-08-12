@@ -13,8 +13,8 @@ const presetNames = Object.keys(PRESETS);
 <template>
   <div class="app">
     <header>
-      <div class="wordmark">nuosc<span>3D NEUTRINO OSCILLATION</span></div>
-      <nav class="seg views" aria-label="View">
+      <img class="logo" src="./assets/logo.svg" alt="nuosc" />
+      <nav class="tabs" aria-label="View">
         <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id }" @click="store.view = v.id">
           {{ v.label }}
         </button>
@@ -54,11 +54,27 @@ header {
   border-bottom: 1px solid var(--border);
   padding: 0 14px;
 }
-.wordmark { font-family: var(--font-mono); font-weight: 700; font-size: 15px; }
-.wordmark span {
-  display: block; font-weight: 400; font-size: 8px;
-  letter-spacing: 0.09em; color: var(--muted);
+.tabs { display: flex; }
+.tabs button {
+  position: relative;
+  padding: 4px 12px 5px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
 }
+.tabs button:hover { color: var(--text); }
+.tabs button.on { color: var(--accent); font-weight: 600; }
+.tabs button.on::after {
+  content: '';
+  position: absolute;
+  left: 12px; right: 12px; bottom: 0;
+  height: 2px;
+  background: var(--accent);
+}
+.logo { height: 38px; display: block; }
 .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 main { flex: 1; display: flex; min-height: 0; }
 aside {

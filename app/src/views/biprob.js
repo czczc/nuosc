@@ -3,11 +3,17 @@
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
-import { engineParams } from '../engines/constants.js';
+import { engineParams, eRangeOf } from '../engines/constants.js';
+import { plot2d } from './plot2d.js';
 
 const SP = 8, SZ = 8;
-const E_MIN = 0.5, E_MAX = 6.0, NE = 100, NDCP = 72, NR = 25;
-const zOfE = (E) => ((E - E_MIN) / (E_MAX - E_MIN) - 0.5) * SZ;
+const E_FLOOR = 0.5, NE = 100, NDCP = 72, NR = 25;
+// preset E window clipped to the readability floor (low-E rings blow up the shared scale)
+const eSpan = (preset) => {
+  const [e0, e1] = eRangeOf(preset);
+  return [Math.max(E_FLOOR, e0), e1];
+};
+const zOfE = (E, E_MIN, E_MAX) => ((E - E_MIN) / (E_MAX - E_MIN) - 0.5) * SZ;
 const ORD_DEF = { NO: { color: 0xe07040, sign: 1 }, IO: { color: 0x4090e0, sign: -1 } };
 
 function pair(ep, dm31, E, L, rho, dcpRad) {
@@ -22,7 +28,7 @@ export default {
   id: 'biprob',
   label: 'Biprobability',
   extras: [
-    { key: 'Eslice', type: 'range', label: 'E slice [GeV]', min: 0.5, max: 6, step: 0.05 },
+    { key: 'Eslice', type: 'range', label: 'E slice [GeV]', min: (s) => eSpan(s.basePreset)[0], max: (s) => eSpan(s.basePreset)[1], step: 0.05 },
     { key: 'showNO', type: 'checkbox', label: 'Normal ordering' },
     { key: 'showIO', type: 'checkbox', label: 'Inverted ordering' },
   ],
@@ -37,7 +43,7 @@ export default {
     ]) base.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map((p) => new THREE.Vector3(...p))), axMat));
     const xl = textSprite('P(numu->nue)'); xl.position.set(SP + 1.6, 0, 0); base.scene.add(xl);
     const yl = textSprite('P(anti)'); yl.position.set(0, SP + 1, 0); base.scene.add(yl);
-    const zl = textSprite(`E [GeV] (${E_MIN} - ${E_MAX})`); zl.position.set(0, -0.5, SZ / 2 + 1.6); base.scene.add(zl);
+    let zl = null, lastZKey = null;
 
     const diag = new THREE.Mesh(
       new THREE.PlaneGeometry(13, 9.5),
@@ -73,6 +79,16 @@ export default {
       const dm31mag = Math.abs(ep.dm31);
       const vs = store.views.biprob;
       const L = store.L, rho = store.rho, Es = vs.Eslice, dcpM = store.dcp * Math.PI / 180;
+      const [E_MIN, E_MAX] = eSpan(store.basePreset);
+
+      const zKey = `E [GeV] (${E_MIN} - ${E_MAX})`;
+      if (zKey !== lastZKey) {
+        if (zl) base.scene.remove(zl);
+        zl = textSprite(zKey);
+        zl.position.set(0, -0.5, SZ / 2 + 1.6);
+        base.scene.add(zl);
+        lastZKey = zKey;
+      }
 
       // pass 1: grids + shared scale
       let maxP = 1e-6;
@@ -99,7 +115,7 @@ export default {
         let v = 0;
         for (let r = 0; r < NR; r++) {
           const i = Math.round((r / (NR - 1)) * (NE - 1));
-          const z = zOfE(E_MIN + (i / (NE - 1)) * (E_MAX - E_MIN));
+          const z = zOfE(E_MIN + (i / (NE - 1)) * (E_MAX - E_MIN), E_MIN, E_MAX);
           for (let j = 0; j < NDCP; j++) {
             const k1 = i * NDCP + j, k2 = i * NDCP + (j + 1) % NDCP;
             rp.setXYZ(v++, (o.P[k1] / maxP) * SP, (o.Pb[k1] / maxP) * SP, z);
@@ -111,13 +127,13 @@ export default {
         const pts = [];
         for (let j = 0; j < NDCP; j++) {
           const [p, pb] = pair(ep, o.sign * dm31mag, Es, L, rho, (j / NDCP) * 2 * Math.PI);
-          pts.push(new THREE.Vector3((p / maxP) * SP, (pb / maxP) * SP, zOfE(Es)));
+          pts.push(new THREE.Vector3((p / maxP) * SP, (pb / maxP) * SP, zOfE(Es, E_MIN, E_MAX)));
         }
         o.slice.geometry.dispose();
         o.slice.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 144, 0.045, 8, true);
 
         [o.pM, o.pbM] = pair(ep, o.sign * dm31mag, Es, L, rho, dcpM);
-        o.marker.position.set((o.pM / maxP) * SP, (o.pbM / maxP) * SP, zOfE(Es));
+        o.marker.position.set((o.pM / maxP) * SP, (o.pbM / maxP) * SP, zOfE(Es, E_MIN, E_MAX));
       }
       connector.visible = vs.showNO && vs.showIO;
       connector.geometry.setFromPoints([ORD.NO.marker.position.clone(), ORD.IO.marker.position.clone()]);
@@ -157,14 +173,14 @@ export default {
         }
         [o.pM, o.pbM] = pair(ep, o.sign * dm31mag, Es, L, rho, dcpM);
       }
-      const pad = 14 * dpr;
-      const X = (p) => pad + (w - 2 * pad) * p / maxP;
-      const Y = (p) => h - pad - (h - 2 * pad) * p / maxP;
+      const m = maxP * 1.05;
+      const P = plot2d(ctx, w, h, dpr, { x: [0, m], y: [0, m], xTitle: 'P(νμ→νe)', yTitle: 'P̄(ν̄μ→ν̄e)' });
+      const X = (p) => P.X(p), Y = (p) => P.Y(p);
 
       ctx.strokeStyle = 'rgba(140,155,170,0.35)';
       ctx.lineWidth = dpr;
       ctx.setLineDash([4 * dpr, 4 * dpr]);
-      ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(maxP), Y(maxP)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(m), Y(m)); ctx.stroke();
       ctx.setLineDash([]);
 
       for (const o of orders) {
@@ -178,7 +194,7 @@ export default {
       }
       ctx.font = `${10 * dpr}px ui-monospace, monospace`;
       ctx.fillStyle = '#9aa7b5';
-      ctx.fillText(`P vs P̄, δCP sweep · max ${maxP.toFixed(3)}`, 8 * dpr, 14 * dpr);
+      ctx.fillText('δCP sweep', P.ml + 5 * dpr, P.mt + 13 * dpr);
     },
   },
 };

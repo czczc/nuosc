@@ -28,5 +28,5 @@ import sphere from './sphere.js';
 import phasors from './phasors.js';
 import biprob from './biprob.js';
 
-export const VIEWS = [oscillogram, tube, sphere, phasors, biprob];
+export const VIEWS = [oscillogram, biprob, sphere, phasors, tube];
 export const VIEW_MAP = Object.fromEntries(VIEWS.map((v) => [v.id, v]));

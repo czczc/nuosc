@@ -1,9 +1,13 @@
 <script setup>
+import { computed } from 'vue';
 import { store, markCustom } from '../store.js';
+import { PRESETS, lRangeOf } from '../engines/constants.js';
+
+const beam = computed(() => PRESETS[store.basePreset] ?? null);
 
 const shared = [
   { key: 'dcp', label: 'δCP [°]', min: 0, max: 360, step: 1 },
-  { key: 'L', label: 'L [km]', min: 0, max: 5000, step: 5, custom: true },
+  { key: 'L', label: 'L [km]', min: 0, max: (s) => lRangeOf(s.basePreset)[1], step: 5, custom: true },
   { key: 'rho', label: 'ρ [g/cm³]', min: 0, max: 15, step: 0.05, custom: true },
 ];
 const rare = [
@@ -17,14 +21,22 @@ function fmt(v, step) {
   const prec = (String(step).split('.')[1] || '').length;
   return Number(v).toFixed(prec);
 }
+
+// min/max may be (store) => value, e.g. preset-dependent L span
+function lim(v) {
+  return typeof v === 'function' ? v(store) : v;
+}
 </script>
 
 <template>
   <div class="card">
     <h3>Controls</h3>
+    <div v-if="beam" class="note">
+      {{ store.basePreset }} beam: {{ beam.Erange[0] }}–{{ beam.Erange[1] }} GeV · peak {{ beam.Epeak }} GeV
+    </div>
     <div v-for="p in shared" :key="p.key" class="ctl-row">
       <label :for="p.key">{{ p.label }}</label>
-      <input :id="p.key" v-model.number="store[p.key]" type="range" :min="p.min" :max="p.max" :step="p.step"
+      <input :id="p.key" v-model.number="store[p.key]" type="range" :min="lim(p.min)" :max="lim(p.max)" :step="p.step"
         @input="p.custom && markCustom()" />
       <span class="val">{{ fmt(store[p.key], p.step) }}</span>
     </div>

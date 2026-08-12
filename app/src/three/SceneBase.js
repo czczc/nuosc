@@ -14,19 +14,29 @@ export function viridis(t) {
   return [a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1]), a[2] + f * (b[2] - a[2])];
 }
 
-export function textSprite(text, size = 0.5) {
+// Canvas sized to the text so long labels are never cut off.
+function textCanvas(text) {
   const c = document.createElement('canvas');
-  c.width = 256; c.height = 64;
   const g = c.getContext('2d');
-  g.font = '28px ui-monospace, monospace';
+  const font = '28px ui-monospace, monospace';
+  g.font = font;
+  c.width = Math.ceil(g.measureText(text).width) + 16;
+  c.height = 64;
+  g.font = font; // resizing the canvas resets context state
   g.fillStyle = '#9aa7b5';
   g.textAlign = 'center';
-  g.fillText(text, 128, 42);
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
-  s.scale.set(4 * size, size, 1);
-  return s;
+  g.textBaseline = 'middle';
+  g.fillText(text, c.width / 2, c.height / 2);
+  return c;
 }
 
+// Billboard label (always faces the camera). `size` = world-space text height.
+export function textSprite(text, size = 0.5) {
+  const c = textCanvas(text);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
+  s.scale.set(size * c.width / c.height, size, 1);
+  return s;
+}
 // Shared renderer/camera/controls shell for all views.
 // - orthographic camera by default, frustum matched to the perspective view (locked decision, map #1)
 // - continuous render loop with optional per-frame tick (views use it for play/marker animation)
@@ -92,6 +102,26 @@ export class SceneBase {
     this.camera = next;
     this.camera.updateProjectionMatrix();
     this.controls.object = this.camera;
+    this.controls.update();
+  }
+
+  // Snap the camera to an axis-aligned projection: 'yx' | 'zx' | 'zy'
+  // (first axis = screen up, second = screen right), keeping the current distance and target.
+  snapTo(plane) {
+    const P = {
+      yx: { pos: [0, 0, 1], up: [0, 1, 0] },
+      zx: { pos: [0, -1, 0], up: [0, 0, 1] },
+      zy: { pos: [1, 0, 0], up: [0, 0, 1] },
+    }[plane];
+    if (!P) return;
+    const t = this.controls.target;
+    const dist = this.camera.position.distanceTo(t);
+    const pos = new THREE.Vector3(...P.pos).multiplyScalar(dist).add(t);
+    for (const cam of [this.persp, this.orthoCam]) {
+      cam.up.set(...P.up);
+      cam.position.copy(pos);
+      cam.lookAt(t);
+    }
     this.controls.update();
   }
 

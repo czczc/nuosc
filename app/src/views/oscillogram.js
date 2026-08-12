@@ -3,11 +3,11 @@
 import * as THREE from 'three';
 import { SceneBase, viridis, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
-import { engineParams } from '../engines/constants.js';
+import { engineParams, PRESETS, eRangeOf, lRangeOf } from '../engines/constants.js';
+import { plot2d, legend } from './plot2d.js';
 
 const SX = 8, SZ = 8, SY = 2.2, N = 161;
-const E_MIN = 0.2, E_MAX = 6.0;
-const RANGES = { L: [0, 5000], dcp: [0, 360], rho: [0, 15] };
+const RANGES = { dcp: [0, 360], rho: [0, 15] };
 const AXIS_LABEL = { L: 'L [km]', dcp: 'dCP [deg]', rho: 'rho [g/cm3]' };
 
 function pMuE(ep, E, L, rho, dcp, anti) {
@@ -22,7 +22,7 @@ export default {
     {
       key: 'axis2', type: 'select', label: '2nd axis',
       options: [
-        { value: 'L', label: 'L [0–5000 km]' },
+        { value: 'L', label: 'L [0 – 2×baseline km]' },
         { value: 'dcp', label: 'δCP [0–360°]' },
         { value: 'rho', label: 'ρ [0–15 g/cm³]' },
       ],
@@ -48,17 +48,16 @@ export default {
     grid.position.y = -0.01;
     base.scene.add(grid);
 
-    const xLabel = textSprite(`E [GeV]  (${E_MIN} - ${E_MAX})`);
-    xLabel.position.set(0, 0.1, SZ / 2 + 0.8);
-    base.scene.add(xLabel);
-    let zLabel = null;
+    let xLabel = null, lastXKey = null;
+    let zLabel = null, lastZKey = null;
 
-    let maxP = 1, lastAxis2 = null, lastHeld = null;
+    let maxP = 1, lastHeld = null;
 
     function update() {
       const ep = engineParams(store);
+      const [E_MIN, E_MAX] = eRangeOf(store.basePreset);
       const axis2 = store.views.oscillogram.axis2;
-      const [a2min, a2max] = RANGES[axis2];
+      const [a2min, a2max] = axis2 === 'L' ? lRangeOf(store.basePreset) : RANGES[axis2];
       const held = { dcp: store.dcp, L: store.L, rho: store.rho };
       const anti = store.anti;
 
@@ -93,21 +92,30 @@ export default {
       }
       sp.needsUpdate = true;
 
-      if (axis2 !== lastAxis2) {
+      const xKey = `E [GeV]  (${E_MIN} - ${E_MAX})`;
+      if (xKey !== lastXKey) {
+        if (xLabel) base.scene.remove(xLabel);
+        xLabel = textSprite(xKey);
+        xLabel.position.set(0, 0.1, SZ / 2 + 0.8);
+        base.scene.add(xLabel);
+        lastXKey = xKey;
+      }
+      const zKey = `${AXIS_LABEL[axis2]}  (${a2min} - ${a2max})`;
+      if (zKey !== lastZKey) {
         if (zLabel) base.scene.remove(zLabel);
-        zLabel = textSprite(`${AXIS_LABEL[axis2]}  (${a2min} - ${a2max})`);
+        zLabel = textSprite(zKey);
         zLabel.position.set(-SX / 2 - 1.2, 0.1, 0);
         base.scene.add(zLabel);
-        lastAxis2 = axis2;
+        lastZKey = zKey;
       }
-      lastHeld = { ...held, axis2, a2min, a2max, ep, anti };
+      lastHeld = { ...held, axis2, a2min, a2max, E_MIN, E_MAX, ep, anti };
     }
 
     function probe(event) {
       if (!lastHeld) return null;
       const hit = base.raycast(event, surface);
       if (!hit) return null;
-      const E = E_MIN + (hit.point.x / SX + 0.5) * (E_MAX - E_MIN);
+      const E = lastHeld.E_MIN + (hit.point.x / SX + 0.5) * (lastHeld.E_MAX - lastHeld.E_MIN);
       const v = lastHeld.a2min + (0.5 - hit.point.z / SZ) * (lastHeld.a2max - lastHeld.a2min);
       const held = { dcp: lastHeld.dcp, L: lastHeld.L, rho: lastHeld.rho };
       held[lastHeld.axis2] = v;
@@ -127,6 +135,7 @@ export default {
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#0b0e13'; ctx.fillRect(0, 0, w, h);
       const ep = engineParams(store);
+      const [E_MIN, E_MAX] = eRangeOf(store.basePreset);
       const NPT = 240;
       const series = [
         { anti: false, color: '#e0604f', label: 'ν' },
@@ -142,25 +151,33 @@ export default {
         }
         return ys;
       });
-      ctx.strokeStyle = 'rgba(140,155,170,0.15)';
-      ctx.lineWidth = dpr;
-      for (let g = 1; g < 5; g++) { ctx.beginPath(); ctx.moveTo(0, h * g / 5); ctx.lineTo(w, h * g / 5); ctx.stroke(); }
+      const P = plot2d(ctx, w, h, dpr, { x: [E_MIN, E_MAX], y: [0, pmax * 1.08], xTitle: 'E [GeV]', yTitle: 'P(νμ→νe)' });
+
+      // experiment beam: dashed line at the flux peak
+      const beam = PRESETS[store.basePreset];
+      if (beam) {
+        const xp = P.X(beam.Epeak);
+        ctx.strokeStyle = 'rgba(78,205,180,0.55)';
+        ctx.lineWidth = dpr;
+        ctx.setLineDash([4 * dpr, 4 * dpr]);
+        ctx.beginPath(); ctx.moveTo(xp, P.mt); ctx.lineTo(xp, P.mt + P.ph); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = `${10 * dpr}px ui-monospace, monospace`;
+        ctx.fillStyle = 'rgba(78,205,180,0.8)';
+        ctx.fillText(`peak ${beam.Epeak} GeV`, xp + 4 * dpr, P.mt + P.ph - 6 * dpr);
+      }
       data.forEach((ys, si) => {
         ctx.strokeStyle = series[si].color;
         ctx.lineWidth = 1.8 * dpr;
         ctx.beginPath();
         for (let i = 0; i < NPT; i++) {
-          const x = w * i / (NPT - 1);
-          const y = h - 6 * dpr - (h - 20 * dpr) * ys[i] / pmax;
+          const x = P.X(E_MIN + (E_MAX - E_MIN) * i / (NPT - 1));
+          const y = P.Y(ys[i]);
           if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
         ctx.stroke();
       });
-      ctx.font = `${10 * dpr}px ui-monospace, monospace`;
-      ctx.fillStyle = '#9aa7b5';
-      ctx.fillText(`P(νμ→νe) vs E [${E_MIN}–${E_MAX} GeV] · max ${pmax.toFixed(3)}`, 8 * dpr, 14 * dpr);
-      ctx.fillStyle = '#e0604f'; ctx.fillText('ν', w - 30 * dpr, 14 * dpr);
-      ctx.fillStyle = '#5588e8'; ctx.fillText('ν̅', w - 16 * dpr, 14 * dpr);
+      legend(ctx, dpr, P, series);
     },
   },
 };

@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import { SceneBase, viridis, textSprite } from '../three/SceneBase.js';
 import { C, hamiltonian, eigH, amp, prob } from '../engines/jacobi.js';
-import { engineParams, DEG } from '../engines/constants.js';
+import { engineParams, DEG, eRangeOf, lRangeOf } from '../engines/constants.js';
+import { plot2d, legend } from './plot2d.js';
 
 const R = 2.5;                 // sphere radius in world units
 const NSAMP = 1024;            // trajectory buffer size (L sweep; E/dcp use 512 via setDrawRange)
@@ -23,7 +24,8 @@ function makeSweep(store) {
     return { sweep, lo: 0, hi: vs.Lmax, stateAt: (sv) => ({ eig, L: sv }) };
   }
   if (sweep === 'E') {
-    return { sweep, lo: 0.2, hi: 6, stateAt: (sv) => ({ eig: eigH(hamiltonian(ep, sv, rho, anti)), L: Lfixed }) };
+    const [lo, hi] = eRangeOf(store.basePreset);
+    return { sweep, lo, hi, stateAt: (sv) => ({ eig: eigH(hamiltonian(ep, sv, rho, anti)), L: Lfixed }) };
   }
   return {
     sweep, lo: 0, hi: 360,
@@ -52,8 +54,8 @@ export default {
         { value: 'dcp', label: 'over δCP' },
       ],
     },
-    { key: 'E', type: 'range', label: 'E [GeV]', min: 0.2, max: 6, step: 0.01 },
-    { key: 'Lmax', type: 'range', label: 'L max [km]', min: 500, max: 20000, step: 100 },
+    { key: 'E', type: 'range', label: 'E [GeV]', min: (s) => eRangeOf(s.basePreset)[0], max: (s) => eRangeOf(s.basePreset)[1], step: 0.01 },
+    { key: 'Lmax', type: 'range', label: 'L max [km]', min: 100, max: (s) => lRangeOf(s.basePreset)[1], step: 5 },
     { key: 'play', type: 'checkbox', label: 'play' },
     { key: 'marker', type: 'range', label: 'marker', min: 0, max: 1, step: 0.002 },
   ],
@@ -181,35 +183,25 @@ export default {
         for (let s = 0; s < 3; s++) ys[s][i] = prob(st.eig, 1, series[s].beta, st.L);
       }
 
-      ctx.strokeStyle = 'rgba(140,155,170,0.15)';
-      ctx.lineWidth = dpr;
-      for (let g = 1; g < 5; g++) { ctx.beginPath(); ctx.moveTo(0, h * g / 5); ctx.lineTo(w, h * g / 5); ctx.stroke(); }
-
-      const yPix = (p) => h - 6 * dpr - (h - 20 * dpr) * p; // y axis fixed to [0, 1]
+      const P = plot2d(ctx, w, h, dpr, { x: [lo, hi], y: [0, 1], xTitle: SWEEP_LABEL[sweep], yTitle: 'P(νμ→νx)' });
       ys.forEach((yv, si) => {
         ctx.strokeStyle = series[si].color;
         ctx.lineWidth = 1.8 * dpr;
         ctx.beginPath();
         for (let i = 0; i < NPT; i++) {
-          const x = w * i / (NPT - 1);
-          if (i === 0) ctx.moveTo(x, yPix(yv[i])); else ctx.lineTo(x, yPix(yv[i]));
+          const x = P.X(lo + (hi - lo) * i / (NPT - 1));
+          if (i === 0) ctx.moveTo(x, P.Y(yv[i])); else ctx.lineTo(x, P.Y(yv[i]));
         }
         ctx.stroke();
       });
 
       // marker (markerDriven: CompanionPanel's rAF repaints this)
-      const mx = w * store.views.sphere.marker;
+      const mx = P.X(lo + (hi - lo) * store.views.sphere.marker);
       ctx.strokeStyle = 'rgba(255,255,255,0.8)';
       ctx.lineWidth = dpr;
-      ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx, h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
 
-      ctx.font = `${10 * dpr}px ui-monospace, monospace`;
-      ctx.fillStyle = '#9aa7b5';
-      ctx.fillText(`P(νμ→νx) vs ${SWEEP_LABEL[sweep]} [${lo}–${hi}]`, 8 * dpr, 14 * dpr);
-      series.forEach((s, si) => {
-        ctx.fillStyle = s.color;
-        ctx.fillText(s.label, w - (3 - si) * 26 * dpr, 14 * dpr);
-      });
+      legend(ctx, dpr, P, series);
     },
   },
 };

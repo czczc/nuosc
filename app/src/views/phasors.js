@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { C, hamiltonian, eigH, phasorTerms } from '../engines/jacobi.js';
-import { engineParams, DEG } from '../engines/constants.js';
+import { engineParams, DEG, eRangeOf, lRangeOf } from '../engines/constants.js';
+import { plot2d } from './plot2d.js';
 
 const SX = 10, N = 1024, NSWEEP = 512;   // N samples for x = L (one eigH); NSWEEP for x = E / dcp (eigH per sample)
 const AMP_SCALE = 2.5 / 0.35;            // |A| = 0.35 -> radius 2.5
@@ -16,8 +17,8 @@ const LOOP_S = 10;                       // ~10 s per sweep of the marker
 
 function xOfFrac(f) { return -SX / 2 + SX * f; }
 
-function xRange(xaxis, Lmax) {
-  if (xaxis === 'E') return [0.2, 6];
+function xRange(xaxis, Lmax, preset) {
+  if (xaxis === 'E') return eRangeOf(preset);
   if (xaxis === 'dcp') return [0, 360];
   return [0, Lmax];
 }
@@ -68,8 +69,8 @@ export default {
         { value: 'dcp', label: 'x = δCP' },
       ],
     },
-    { key: 'E', type: 'range', label: 'E [GeV]', min: 0.2, max: 6, step: 0.01 },
-    { key: 'Lmax', type: 'range', label: 'L max [km]', min: 500, max: 10000, step: 100 },
+    { key: 'E', type: 'range', label: 'E [GeV]', min: (s) => eRangeOf(s.basePreset)[0], max: (s) => eRangeOf(s.basePreset)[1], step: 0.01 },
+    { key: 'Lmax', type: 'range', label: 'L max [km]', min: 100, max: (s) => lRangeOf(s.basePreset)[1], step: 5 },
     { key: 'play', type: 'checkbox', label: 'play' },
     { key: 'marker', type: 'range', label: 'marker', min: 0, max: 1, step: 0.002 },
   ],
@@ -134,7 +135,7 @@ export default {
       const ep = engineParams(store);
       const { xaxis, E, Lmax } = store.views.phasors; // NOT play/marker (tick-only, per contract)
       const rho = store.rho, anti = store.anti, Lfix = store.L;
-      const [x0, x1] = xRange(xaxis, Lmax);
+      const [x0, x1] = xRange(xaxis, Lmax, store.basePreset);
       const M = xaxis === 'L' ? N : NSWEEP;
       const d0 = xaxis === 'L' ? decompose(ep, E, rho, anti) : null; // one eigH when x = L
 
@@ -241,7 +242,7 @@ export default {
 
       const ep = engineParams(store);
       const { xaxis, E, Lmax, marker } = store.views.phasors; // marker OK here: markerDriven
-      const [x0, x1] = xRange(xaxis, Lmax);
+      const [x0, x1] = xRange(xaxis, Lmax, store.basePreset);
       const NPT = 240;
       const d0 = xaxis === 'L' ? decompose(ep, E, store.rho, store.anti) : null;
       const ys = new Float32Array(NPT);
@@ -254,28 +255,22 @@ export default {
         if (ys[i] > pmax) pmax = ys[i];
       }
 
-      ctx.strokeStyle = 'rgba(140,155,170,0.15)';
-      ctx.lineWidth = dpr;
-      for (let g = 1; g < 5; g++) { ctx.beginPath(); ctx.moveTo(0, h * g / 5); ctx.lineTo(w, h * g / 5); ctx.stroke(); }
+      const P = plot2d(ctx, w, h, dpr, { x: [x0, x1], y: [0, pmax * 1.08], xTitle: AXIS_LABEL[xaxis], yTitle: 'P(νμ→νe)' });
 
       ctx.strokeStyle = '#66ccff';
       ctx.lineWidth = 1.8 * dpr;
       ctx.beginPath();
       for (let i = 0; i < NPT; i++) {
-        const x = w * i / (NPT - 1);
-        const y = h - 6 * dpr - (h - 20 * dpr) * ys[i] / pmax;
+        const x = P.X(x0 + (x1 - x0) * i / (NPT - 1));
+        const y = P.Y(ys[i]);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
 
-      const mx = w * marker;
+      const mx = P.X(x0 + (x1 - x0) * marker);
       ctx.strokeStyle = 'rgba(255,255,255,0.8)';
       ctx.lineWidth = dpr;
-      ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx, h); ctx.stroke();
-
-      ctx.font = `${10 * dpr}px ui-monospace, monospace`;
-      ctx.fillStyle = '#9aa7b5';
-      ctx.fillText(`${AXIS_LABEL[xaxis]} [${x0}–${x1}] · max ${pmax.toFixed(3)}`, 8 * dpr, 14 * dpr);
+      ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
     },
   },
 };

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 0 36 32" role="img" aria-label="nuosc">
+  <!-- miniature 3-flavor oscillation: P(mu->mu) blue, P(mu->e) red, P(mu->tau) green;
+       same frequency, anti-phase, heights sum to 1 (y = 28 - 24*P) -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M4,28 C6.9,28 9.1,22 12,22 C14.9,22 17.1,28 20,28 C22.9,28 25.1,22 28,22 C30.9,22 33.1,28 36,28" stroke="#44aa55" stroke-width="1.6" opacity="0.8"/>
+    <path d="M4,26 C6.9,26 9.1,14 12,14 C14.9,14 17.1,26 20,26 C22.9,26 25.1,14 28,14 C30.9,14 33.1,26 36,26" stroke="#e05545" stroke-width="1.8" opacity="0.9"/>
+    <path d="M4,6 C6.9,6 9.1,24 12,24 C14.9,24 17.1,6 20,6 C22.9,6 25.1,24 28,24 C30.9,24 33.1,6 36,6" stroke="#4488ee" stroke-width="2.2"/>
+  </g>
+</svg>

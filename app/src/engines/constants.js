@@ -20,12 +20,24 @@ export const DEFAULTS = {
   Ye: 0.5,
 };
 
+// Long-baseline numu->nue experiments. Erange = beam flux span [GeV], Epeak = flux peak [GeV].
 export const PRESETS = {
-  DUNE: { L: 1300, rho: 2.85 },
-  NOvA: { L: 810, rho: 2.84 },
-  T2K: { L: 295, rho: 2.6 },
-  JUNO: { L: 52.5, rho: 2.45 },
+  DUNE: { L: 1300, rho: 2.85, Erange: [0.5, 6], Epeak: 2.5 },
+  NOvA: { L: 810, rho: 2.84, Erange: [1, 3], Epeak: 2.0 },
+  T2K: { L: 295, rho: 2.6, Erange: [0.2, 1.5], Epeak: 0.6 },
 };
+
+// Active baseline span [km]: 0 to twice the experiment's L, or the full default span.
+export function lRangeOf(preset) {
+  const p = PRESETS[preset];
+  return p ? [0, 2 * p.L] : [0, 5000];
+}
+
+// Active energy span [GeV]: the selected experiment's beam window, or the full default span.
+export const E_RANGE_DEFAULT = [0.2, 6];
+export function eRangeOf(preset) {
+  return PRESETS[preset]?.Erange ?? E_RANGE_DEFAULT;
+}
 
 // Convert UI parameter state to engine-ready values.
 export function engineParams(p) {

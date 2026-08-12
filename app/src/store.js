@@ -4,6 +4,7 @@ import { DEFAULTS, PRESETS } from './engines/constants.js';
 export const store = reactive({
   view: 'oscillogram',
   preset: 'DUNE',
+  basePreset: 'DUNE', // last experiment clicked; keeps L spans stable while tweaking into "custom"
 
   // shared physics controls
   L: PRESETS.DUNE.L,
@@ -27,9 +28,9 @@ export const store = reactive({
   // per-view state (marker is a 0..1 fraction of the swept range)
   views: {
     oscillogram: { axis2: 'L' },
-    tube: { mode: 'tube', play: true, marker: 0.25, Lmax: 5000, E: 2.5 },
-    sphere: { sweep: 'L', play: true, marker: 0, Lmax: 10000, E: 2.5 },
-    phasors: { xaxis: 'L', play: true, marker: 0, Lmax: 5000, E: 2.5 },
+    tube: { mode: 'tube', play: true, marker: 0.25, Lmax: 2 * PRESETS.DUNE.L, E: 2.5 },
+    sphere: { sweep: 'L', play: true, marker: 0, Lmax: 2 * PRESETS.DUNE.L, E: 2.5 },
+    phasors: { xaxis: 'L', play: true, marker: 0, Lmax: 2 * PRESETS.DUNE.L, E: 2.5 },
     biprob: { Eslice: 2.5, showNO: true, showIO: true },
   },
 });
@@ -38,8 +39,18 @@ export function applyPreset(name) {
   const p = PRESETS[name];
   if (!p) return;
   store.preset = name;
+  store.basePreset = name;
   store.L = p.L;
   store.rho = p.rho;
+  // snap every per-view energy to the experiment's beam peak
+  store.views.tube.E = p.Epeak;
+  store.views.sphere.E = p.Epeak;
+  store.views.phasors.E = p.Epeak;
+  store.views.biprob.Eslice = p.Epeak;
+  // snap the L sweeps to the experiment's span (0 - 2L)
+  store.views.tube.Lmax = 2 * p.L;
+  store.views.sphere.Lmax = 2 * p.L;
+  store.views.phasors.Lmax = 2 * p.L;
 }
 
 // Any manual change to L or rho makes the preset "custom".
