@@ -1,7 +1,7 @@
 // NuFast-LBL, JavaScript port of NuFast_LBL.cpp (Peter Denton & Stephen Parke, arXiv:2405.02400, MIT).
 // Computes all nine oscillation probabilities in constant-density matter with real arithmetic only.
 // Cross-validated against the complex-Jacobi engine to 5.8e-11 (N_Newton=2) / 1.4e-7 (N_Newton=1);
-// see tests/engines.test.js and github.com/czczc/nuosc/issues/8.
+// see tests/engines.test.js and github.com/czczc/nuglass/issues/8.
 import { eVsqkm_to_GeV_over4, YerhoE2a } from './constants.js';
 
 // E > 0 for neutrinos, E < 0 for antineutrinos (upstream convention).

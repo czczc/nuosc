@@ -1,8 +1,8 @@
-# nuosc — 3D Neutrino Oscillation
+# nuglass — 3D Neutrino Oscillation
 
 Interactive five-view 3D visualization of neutrino oscillation with matter effects.
-Built per the locked design spec ([issue #9](https://github.com/czczc/nuosc/issues/9)),
-charted by the wayfinder map ([issue #1](https://github.com/czczc/nuosc/issues/1)).
+Built per the locked design spec ([issue #9](https://github.com/czczc/nuglass/issues/9)),
+charted by the wayfinder map ([issue #1](https://github.com/czczc/nuglass/issues/1)).
 
 ## Views
 
@@ -31,5 +31,5 @@ Every view pairs with a live 2D companion panel (its natural projection).
 npm install
 npm run dev     # local dev server
 npm test        # engine cross-validation
-npm run build   # production build (served at /nuosc/ on GitHub Pages)
+npm run build   # production build (served at /nuglass/ on GitHub Pages)
 ```

@@ -1,7 +1,7 @@
 // Shared physics constants and defaults.
 // Unit constants are FULL PRECISION, adopted from NuFast-LBL (Denton & Parke, arXiv:2405.02400).
 // Do NOT use the legacy/html/script.js matter constant (0.76e-4) — it is half the standard value
-// (documented on github.com/czczc/nuosc/issues/8).
+// (documented on github.com/czczc/nuglass/issues/8).
 
 export const eVsqkm_to_GeV_over4 = 1e-9 / 1.97327e-7 * 1e3 / 4; // (Delta m^2 [eV^2] * L [km] / E [GeV]) -> phase/4
 export const KM_PER_EVSQ_OVER_GEV = 1e-6 / 1.97327e-7 / 2;      // Jacobi engine phase factor: H entries per km

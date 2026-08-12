@@ -14,7 +14,7 @@ const presetNames = Object.keys(PRESETS);
 <template>
   <div class="app">
     <header>
-      <img class="logo" src="./assets/logo.svg" alt="nuosc" />
+      <img class="logo" src="./assets/logo.svg" alt="nuglass" />
       <nav class="tabs" aria-label="View">
         <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id && !store.faq }"
           @click="store.view = v.id; store.faq = null">

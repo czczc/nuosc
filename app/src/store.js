@@ -1,7 +1,7 @@
 import { reactive } from 'vue';
 import { DEFAULTS, PRESETS } from './engines/constants.js';
 
-const storedTheme = typeof localStorage !== 'undefined' ? localStorage.getItem('nuosc-theme') : null;
+const storedTheme = typeof localStorage !== 'undefined' ? localStorage.getItem('nuglass-theme') : null;
 
 export const store = reactive({
   theme: storedTheme === 'light' ? 'light' : 'dark',
@@ -60,7 +60,7 @@ export function applyPreset(name) {
 export function setTheme(t) {
   store.theme = t;
   document.documentElement.dataset.theme = t;
-  try { localStorage.setItem('nuosc-theme', t); } catch { /* private mode */ }
+  try { localStorage.setItem('nuglass-theme', t); } catch { /* private mode */ }
 }
 
 // Any manual change to L or rho makes the preset "custom".

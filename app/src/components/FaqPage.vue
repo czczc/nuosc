@@ -19,7 +19,7 @@ onMounted(() => {
     <article class="doc">
       <h2>FAQ</h2>
       <p class="sub">
-        nuosc visualizes three-flavor neutrino oscillation in constant-density matter — five 3D views,
+        nuglass visualizes three-flavor neutrino oscillation in constant-density matter — five 3D views,
         each paired with a live 2D companion plot. This page describes the physics engines and what each
         view is plotting.
       </p>
