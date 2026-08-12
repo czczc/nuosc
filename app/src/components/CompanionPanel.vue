@@ -2,20 +2,20 @@
 import { computed, onMounted, onBeforeUnmount, ref, watchEffect } from 'vue';
 import { store } from '../store.js';
 
-const props = defineProps({ viewDef: { type: Object, required: true } });
+const props = defineProps({ companion: { type: Object, required: true } });
 const canvas = ref(null);
-const title = computed(() => props.viewDef.companion.title(store));
+const title = computed(() => props.companion.title(store));
 
 let stopDraw = null;
 let raf = 0;
 let ro = null;
 
 function drawNow() {
-  if (canvas.value) props.viewDef.companion.draw(canvas.value, store);
+  if (canvas.value) props.companion.draw(canvas.value, store);
 }
 
 onMounted(() => {
-  if (props.viewDef.companion.markerDriven) {
+  if (props.companion.markerDriven) {
     // marker moves every animation frame during play — repaint on rAF, read store non-reactively
     const loop = () => { drawNow(); raf = requestAnimationFrame(loop); };
     raf = requestAnimationFrame(loop);
@@ -45,7 +45,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .companion .frame {
   position: relative;
-  height: 180px;
+  height: 150px;
   border-radius: 6px;
   overflow: hidden;
   background: var(--stage-bg);

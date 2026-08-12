@@ -1,6 +1,7 @@
 <script setup>
 import { store, applyPreset, setTheme } from './store.js';
 import { PRESETS } from './engines/constants.js';
+import { PALETTES } from './three/SceneBase.js';
 import { VIEWS, VIEW_MAP } from './views/index.js';
 import StageHost from './components/StageHost.vue';
 import ControlsCard from './components/ControlsCard.vue';
@@ -9,6 +10,9 @@ import CompanionPanel from './components/CompanionPanel.vue';
 import FaqPage from './components/FaqPage.vue';
 
 const presetNames = Object.keys(PRESETS);
+const PALETTE_NAMES = Object.keys(PALETTES);
+
+const companions = (v) => [v.companion, v.companion2].filter(Boolean);
 </script>
 
 <template>
@@ -28,10 +32,9 @@ const presetNames = Object.keys(PRESETS);
         <span v-for="p in presetNames" :key="p" class="chip" :class="{ on: store.preset === p }" role="button"
           tabindex="0" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">{{ p }}</span>
         <span class="chip" :class="{ on: store.preset === 'custom' }">custom</span>
-        <span class="seg">
-          <button :class="{ on: store.ortho }" @click="store.ortho = true">ortho</button>
-          <button :class="{ on: !store.ortho }" @click="store.ortho = false">persp</button>
-        </span>
+        <select v-model="store.palette" class="palette" aria-label="Color palette" title="color palette">
+          <option v-for="p in PALETTE_NAMES" :key="p" :value="p">{{ p }}</option>
+        </select>
         <button class="themebtn" :title="store.theme === 'dark' ? 'switch to light mode' : 'switch to dark mode'"
           @click="setTheme(store.theme === 'dark' ? 'light' : 'dark')">
           {{ store.theme === 'dark' ? '☀' : '☾' }}
@@ -46,11 +49,8 @@ const presetNames = Object.keys(PRESETS);
       <aside>
         <ControlsCard />
         <ViewExtras :key="store.view" :view-def="VIEW_MAP[store.view]" />
-        <CompanionPanel :key="store.view" :view-def="VIEW_MAP[store.view]" />
-        <div class="colophon">
-          engines: NuFast-LBL (<a href="https://arxiv.org/abs/2405.02400" target="_blank" rel="noopener">arXiv:2405.02400</a>)
-          + exact 3-flavor · PDG 2023 · cross-validated to 1e-7
-        </div>
+        <CompanionPanel v-for="(c, i) in companions(VIEW_MAP[store.view])" :key="store.view + '-' + i"
+          :companion="c" />
       </aside>
       </template>
     </main>
@@ -98,6 +98,17 @@ header {
   padding: 0; cursor: pointer;
 }
 .themebtn:hover { color: var(--accent); border-color: var(--accent); }
+.palette {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.palette:hover { color: var(--text); }
 .tabs button.on { color: var(--accent); font-weight: 600; }
 .tabs button.on::after {
   content: '';
@@ -116,14 +127,6 @@ aside {
   overflow-y: auto;
   display: flex; flex-direction: column;
 }
-.colophon {
-  margin-top: auto;
-  padding: 10px 12px;
-  font-size: 10.5px;
-  color: var(--muted);
-  border-top: 1px solid var(--border);
-}
-.colophon a { color: var(--muted); }
 @media (max-width: 900px) {
   main { flex-direction: column; overflow-y: auto; }
   aside { width: 100%; border-left: none; border-top: 1px solid var(--border); }

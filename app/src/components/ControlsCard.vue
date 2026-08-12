@@ -1,14 +1,15 @@
 <script setup>
 import { computed } from 'vue';
 import { store, markCustom } from '../store.js';
-import { PRESETS, lRangeOf } from '../engines/constants.js';
+import { PRESETS, lRangeOf, eRangeOf } from '../engines/constants.js';
 
 const beam = computed(() => PRESETS[store.basePreset] ?? null);
 
 const shared = [
   { key: 'dcp', label: 'δCP [°]', min: 0, max: 360, step: 1 },
+  { key: 'E', label: 'E [GeV]', min: (s) => eRangeOf(s.basePreset)[0], max: (s) => eRangeOf(s.basePreset)[1], step: 0.01 },
   { key: 'L', label: 'L [km]', min: 0, max: (s) => lRangeOf(s.basePreset)[1], step: 5, custom: true },
-  { key: 'rho', label: 'ρ [g/cm³]', min: 0, max: 15, step: 0.05, custom: true },
+  { key: 'rho', label: 'ρ [g/cm³]', min: 0, max: 5, step: 0.05, custom: true },
 ];
 const rare = [
   { key: 'th12', label: 'θ₁₂ [°]', min: 25, max: 45, step: 0.01 },

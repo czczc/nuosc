@@ -70,14 +70,12 @@ export default {
         { value: 'dcp', label: 'x = δCP' },
       ],
     },
-    { key: 'E', type: 'range', label: 'E [GeV]', min: (s) => eRangeOf(s.basePreset)[0], max: (s) => eRangeOf(s.basePreset)[1], step: 0.01 },
     { key: 'Lmax', type: 'range', label: 'L max [km]', min: 100, max: (s) => lRangeOf(s.basePreset)[1], step: 5 },
-    { key: 'play', type: 'checkbox', label: 'play' },
-    { key: 'marker', type: 'range', label: 'marker', min: 0, max: 1, step: 0.002 },
+    { key: 'marker', type: 'marker', label: 'animate', step: 0.002 },
   ],
 
   create(container, store) {
-    const base = new SceneBase(container, { camPos: [8, 5, 10], ortho: store.ortho });
+    const base = new SceneBase(container, { camPos: [8, 5, 10] });
 
     function makeLine(n, color, opacity = 1) {
       const g = new THREE.BufferGeometry();
@@ -124,9 +122,9 @@ export default {
     base.scene.add(floorDot);
 
     // static labels
-    const imLabel = textSprite('Im', 0.4); imLabel.position.set(-SX / 2 - 0.5, 2.2, 0); base.scene.add(imLabel);
-    const reLabel = textSprite('Re', 0.4); reLabel.position.set(-SX / 2 - 0.5, 0.15, 2.2); base.scene.add(reLabel);
-    const pLabel = textSprite('P(νμ→νe)', 0.45); pLabel.position.set(-SX / 2 - 1.5, FLOOR_Y + 0.1, 1.2); base.scene.add(pLabel);
+    const imLabel = textSprite('Im', 0.8); imLabel.position.set(-SX / 2 - 0.5, 2.2, 0); base.scene.add(imLabel);
+    const reLabel = textSprite('Re', 0.8); reLabel.position.set(-SX / 2 - 0.5, 0.15, 2.2); base.scene.add(reLabel);
+    const pLabel = textSprite('P(νμ→νe)', 0.9); pLabel.position.set(-SX / 2 - 1.5, FLOOR_Y + 0.1, 1.2); base.scene.add(pLabel);
     let xLabel = null, lastLabelKey = null;
 
     let armState = null; // (frac) -> { xv, terms, pts, P }; cached by update() for tick/probe
@@ -134,7 +132,8 @@ export default {
 
     function update() {
       const ep = engineParams(store);
-      const { xaxis, E, Lmax } = store.views.phasors; // NOT play/marker (tick-only, per contract)
+      const { xaxis, Lmax } = store.views.phasors; // NOT play/marker (tick-only, per contract)
+      const E = store.E;
       const rho = store.rho, anti = store.anti, Lfix = store.L;
       const [x0, x1] = xRange(xaxis, Lmax, store.basePreset);
       const M = xaxis === 'L' ? N : NSWEEP;
@@ -242,7 +241,8 @@ export default {
       ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const ep = engineParams(store);
-      const { xaxis, E, Lmax, marker } = store.views.phasors; // marker OK here: markerDriven
+      const { xaxis, Lmax, marker } = store.views.phasors; // marker OK here: markerDriven
+      const E = store.E;
       const [x0, x1] = xRange(xaxis, Lmax, store.basePreset);
       const NPT = 240;
       const d0 = xaxis === 'L' ? decompose(ep, E, store.rho, store.anti) : null;

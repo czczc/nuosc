@@ -15,6 +15,27 @@ export function viridis(t) {
   return [a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1]), a[2] + f * (b[2] - a[2])];
 }
 
+// Global color palettes (store.palette), t in [0,1] -> [r,g,b] in [0,1].
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+// classic jet-style rainbow: blue (low) -> cyan -> green -> yellow -> red (high)
+function rainbow(t) {
+  t = clamp01(t);
+  return [clamp01(1.5 - Math.abs(4 * t - 3)), clamp01(1.5 - Math.abs(4 * t - 2)), clamp01(1.5 - Math.abs(4 * t - 1))];
+}
+// diverging cool-warm: blue (low) -> light gray -> red (high)
+function coolwarm(t) {
+  t = clamp01(t);
+  const a = [0.23, 0.30, 0.75], m = [0.86, 0.86, 0.86], b = [0.71, 0.02, 0.15];
+  const [p, q, f] = t < 0.5 ? [a, m, 2 * t] : [m, b, 2 * t - 1];
+  return [p[0] + f * (q[0] - p[0]), p[1] + f * (q[1] - p[1]), p[2] + f * (q[2] - p[2])];
+}
+function grayscale(t) {
+  t = clamp01(t);
+  return [t, t, t];
+}
+export const PALETTES = { rainbow, viridis, coolwarm, grayscale };
+
 // Canvas sized to the text so long labels are never cut off.
 function textCanvas(text) {
   const c = document.createElement('canvas');
@@ -31,18 +52,24 @@ function textCanvas(text) {
   return c;
 }
 
-// Billboard label (always faces the camera). `size` = world-space text height.
-export function textSprite(text, size = 0.5) {
+// Billboard label (always faces the camera). SceneBase rescales it every frame so
+// its on-screen height stays constant while zooming; `k` scales relative to the
+// standard label height.
+export function textSprite(text, k = 1) {
   const c = textCanvas(text);
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
-  s.scale.set(size * c.width / c.height, size, 1);
+  s.userData.labelK = k;
+  s.userData.labelAspect = c.width / c.height;
   return s;
 }
+
+// Label height as a fraction of the viewport height.
+const LABEL_FRAC = 0.034;
 // Shared renderer/camera/controls shell for all views.
-// - orthographic camera by default, frustum matched to the perspective view (locked decision, map #1)
+// - always orthographic, frustum matched to a reference perspective view (locked decision, map #1)
 // - continuous render loop with optional per-frame tick (views use it for play/marker animation)
 export class SceneBase {
-  constructor(container, { camPos = [7, 5, 8], target = [0, 0, 0], ortho = true } = {}) {
+  constructor(container, { camPos = [7, 5, 8], target = [0, 0, 0] } = {}) {
     this.container = container;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(theme().stage);
@@ -55,7 +82,7 @@ export class SceneBase {
     this.orthoCam = new THREE.OrthographicCamera(
       -this.orthoHalfH * aspect, this.orthoHalfH * aspect, this.orthoHalfH, -this.orthoHalfH, -300, 300);
     this.orthoCam.position.set(...camPos);
-    this.camera = ortho ? this.orthoCam : this.persp;
+    this.camera = this.orthoCam;
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -71,11 +98,15 @@ export class SceneBase {
     this.scene.add(dir);
 
     this.onTick = null;
+    this._snapAnim = null;
+    this.controls.addEventListener('start', () => { this._snapAnim = null; });
     this._clock = new THREE.Clock();
     this.renderer.setAnimationLoop(() => {
       const dt = this._clock.getDelta();
       if (this.onTick) this.onTick(dt);
-      this.controls.update();
+      if (this._snapAnim) this._stepSnap(dt);
+      else this.controls.update();
+      this._updateLabels();
       this.renderer.render(this.scene, this.camera);
     });
 
@@ -83,6 +114,21 @@ export class SceneBase {
     this._ro.observe(container);
     this._ray = new THREE.Raycaster();
     this._mouse = new THREE.Vector2();
+    this._tmpV = new THREE.Vector3();
+  }
+
+  // Rescale label sprites so their on-screen height stays LABEL_FRAC of the
+  // viewport regardless of camera zoom/distance.
+  _updateLabels() {
+    const ortho = this.camera === this.orthoCam;
+    const orthoH = (this.orthoCam.top - this.orthoCam.bottom) / this.orthoCam.zoom;
+    const perspK = 2 * Math.tan(this.persp.fov * Math.PI / 360);
+    this.scene.traverse((o) => {
+      if (!o.isSprite || !o.userData.labelK) return;
+      const visH = ortho ? orthoH : perspK * this.persp.position.distanceTo(o.getWorldPosition(this._tmpV));
+      const s = LABEL_FRAC * visH * o.userData.labelK;
+      o.scale.set(s * o.userData.labelAspect, s, 1);
+    });
   }
 
   _resize() {
@@ -96,34 +142,48 @@ export class SceneBase {
     this.renderer.setSize(w, h);
   }
 
-  setOrtho(on) {
-    const next = on ? this.orthoCam : this.persp;
-    if (next === this.camera) return;
-    next.position.copy(this.camera.position);
-    this.camera = next;
-    this.camera.updateProjectionMatrix();
-    this.controls.object = this.camera;
-    this.controls.update();
-  }
-
-  // Snap the camera to an axis-aligned projection: 'yx' | 'zx' | 'zy'
-  // (first axis = screen up, second = screen right), keeping the current distance and target.
+  // Snap the camera to an axis-aligned projection, keeping the current distance and target:
+  // 'front' from +z (x right, y up), 'top' from +y (x right, -z up), 'side' from -x (z right, y up).
+  // Camera up stays world +y — OrbitControls caches its up axis at construction, so
+  // changing it makes orbiting feel twisted. The top view is tilted by an epsilon
+  // instead, so lookAt/OrbitControls never degenerate.
   snapTo(plane) {
-    const P = {
-      yx: { pos: [0, 0, 1], up: [0, 1, 0] },
-      zx: { pos: [0, -1, 0], up: [0, 0, 1] },
-      zy: { pos: [1, 0, 0], up: [0, 0, 1] },
+    const to = {
+      front: [0, 0, 1],
+      top: [0, 1, 0.001],
+      side: [-1, 0, 0],
     }[plane];
-    if (!P) return;
+    if (!to) return;
     const t = this.controls.target;
     const dist = this.camera.position.distanceTo(t);
-    const pos = new THREE.Vector3(...P.pos).multiplyScalar(dist).add(t);
+    const endPos = new THREE.Vector3(...to).normalize().multiplyScalar(dist).add(t);
+    const m = new THREE.Matrix4().lookAt(endPos, t, new THREE.Vector3(0, 1, 0));
+    this._snapAnim = {
+      q0: this.camera.quaternion.clone(),
+      q1: new THREE.Quaternion().setFromRotationMatrix(m),
+      dist,
+      u: 0,
+    };
+  }
+
+  // Advance the snap tween: slerp the full camera orientation (roll included —
+  // a position-only tween jumps at the top view, where lookAt's roll is degenerate)
+  // and place the camera on its -z axis at constant distance from the target,
+  // easing with smoothstep. Cancelled when the user grabs the controls; the loop
+  // skips controls.update() while active so it can't overwrite the pose.
+  _stepSnap(dt) {
+    const a = this._snapAnim;
+    if (!a) return;
+    a.u = Math.min(1, a.u + dt / 0.45);
+    const k = a.u * a.u * (3 - 2 * a.u);
+    const q = new THREE.Quaternion().slerpQuaternions(a.q0, a.q1, k);
+    const pos = new THREE.Vector3(0, 0, 1).applyQuaternion(q).multiplyScalar(a.dist).add(this.controls.target);
     for (const cam of [this.persp, this.orthoCam]) {
-      cam.up.set(...P.up);
+      cam.up.set(0, 1, 0);
       cam.position.copy(pos);
-      cam.lookAt(t);
+      cam.quaternion.copy(q);
     }
-    this.controls.update();
+    if (a.u >= 1) this._snapAnim = null;
   }
 
   // Raycast a pointer event against an object; returns the intersection or null.

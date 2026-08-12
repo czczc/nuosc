@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { hamiltonian, eigH, prob } from '../engines/jacobi.js';
-import { engineParams, eRangeOf, lRangeOf } from '../engines/constants.js';
+import { engineParams, lRangeOf } from '../engines/constants.js';
 import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
@@ -41,14 +41,12 @@ export default {
         { value: 'bands', label: 'stacked bands' },
       ],
     },
-    { key: 'E', type: 'range', label: 'E [GeV]', min: (s) => eRangeOf(s.basePreset)[0], max: (s) => eRangeOf(s.basePreset)[1], step: 0.01 },
     { key: 'Lmax', type: 'range', label: 'L max [km]', min: 100, max: (s) => lRangeOf(s.basePreset)[1], step: 5 },
-    { key: 'play', type: 'checkbox', label: 'play' },
-    { key: 'marker', type: 'range', label: 'marker', min: 0, max: 1, step: 0.002 },
+    { key: 'marker', type: 'marker', label: 'animate', step: 0.002 },
   ],
 
   create(container, store) {
-    const base = new SceneBase(container, { camPos: [-6, 4.5, 8.5], target: [0, TUBE_CY, 0], ortho: store.ortho });
+    const base = new SceneBase(container, { camPos: [-6, 4.5, 8.5], target: [0, TUBE_CY, 0] });
 
     const grid = new THREE.GridHelper(SX, 10, theme().grid1, theme().grid2);
     grid.position.y = -0.01;
@@ -184,10 +182,10 @@ export default {
     const zero = new Float64Array(NS);
 
     function update() {
-      const st = store.views.tube; // reads mode/E/Lmax only — never play/marker (tick-only)
+      const st = store.views.tube; // reads mode/Lmax only — never play/marker (tick-only)
       const ep = engineParams(store);
       lastLmax = st.Lmax;
-      eig = eigH(hamiltonian(ep, st.E, store.rho, store.anti));
+      eig = eigH(hamiltonian(ep, store.E, store.rho, store.anti));
       for (let i = 0; i < NS; i++) {
         const L = (i / (NS - 1)) * lastLmax;
         const pe = prob(eig, 1, 0, L);
@@ -256,7 +254,7 @@ export default {
   },
 
   companion: {
-    title: (store) => `Flavor fractions vs L at E = ${store.views.tube.E} GeV`,
+    title: (store) => `Flavor fractions vs L at E = ${store.E} GeV`,
     markerDriven: true, // repainted per frame by CompanionPanel's rAF, so draw may read marker
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
@@ -267,7 +265,7 @@ export default {
 
       const st = store.views.tube;
       const ep = engineParams(store);
-      const eig = eigH(hamiltonian(ep, st.E, store.rho, store.anti));
+      const eig = eigH(hamiltonian(ep, store.E, store.rho, store.anti));
       const NPT = 240;
       const cums = [new Float64Array(NPT), new Float64Array(NPT), new Float64Array(NPT)];
       for (let i = 0; i < NPT; i++) {

@@ -37,6 +37,16 @@ function lim(v) {
         <input :id="'x-' + e.key" v-model.number="vs[e.key]" type="range" :min="lim(e.min)" :max="lim(e.max)" :step="e.step" />
         <span class="val">{{ fmt(vs[e.key], e.step) }}</span>
       </div>
+      <div v-else-if="e.type === 'marker'" class="ctl-row">
+        <label :for="'x-' + e.key">{{ e.label }}</label>
+        <select v-if="e.select" v-model="vs[e.select.key]" class="mini" :aria-label="e.label + ' variable'">
+          <option v-for="o in e.select.options" :key="o.value" :value="o.value">{{ o.label }}</option>
+        </select>
+        <button class="playbtn" :title="vs.play ? 'pause' : 'play'" @click="vs.play = !vs.play">
+          {{ vs.play ? '❚❚' : '▶' }}
+        </button>
+        <input :id="'x-' + e.key" v-model.number="vs[e.key]" type="range" min="0" max="1" :step="e.step" />
+      </div>
     </template>
     <p v-if="viewDef.note" class="note">{{ viewDef.note }}</p>
   </div>
@@ -52,6 +62,15 @@ h3 { display: flex; align-items: center; justify-content: space-between; }
   padding: 0; cursor: pointer;
 }
 .faqlink:hover { color: var(--accent); border-color: var(--accent); }
+.playbtn {
+  flex: 0 0 24px; height: 22px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface-3); color: var(--accent);
+  font-size: 9px; line-height: 1;
+  padding: 0; cursor: pointer;
+}
+.playbtn:hover { border-color: var(--accent); }
+select.mini { flex: 0 0 62px; }
 select {
   background: var(--surface-3);
   border: 1px solid var(--border);

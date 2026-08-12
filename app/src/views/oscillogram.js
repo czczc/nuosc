@@ -1,37 +1,50 @@
 // Oscillogram surface: P(numu->nue) over (E x second-axis), NuFast engine.
 // Reference implementation of the view contract (see views/index.js).
 import * as THREE from 'three';
-import { SceneBase, viridis, textSprite } from '../three/SceneBase.js';
+import { SceneBase, PALETTES, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
 import { engineParams, PRESETS, eRangeOf, lRangeOf } from '../engines/constants.js';
 import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
 const SX = 8, SZ = 8, SY = 2.2, N = 161;
-const RANGES = { dcp: [0, 360], rho: [0, 15] };
+const RANGES = { dcp: [0, 360], rho: [0, 5] };
 const AXIS_LABEL = { L: 'L [km]', dcp: 'dCP [deg]', rho: 'rho [g/cm3]' };
+const LOOP_S = 10; // ~10 s per sweep of the marker, as in phasors
 
 function pMuE(ep, E, L, rho, dcp, anti) {
   const P = probabilityMatter(ep.s12sq, ep.s13sq, ep.s23sq, dcp * Math.PI / 180, ep.dm21, ep.dm31, L, anti ? -E : E, rho * ep.Ye, 1);
   return Math.max(0, Math.min(1, P[1][0]));
 }
 
+
 export default {
   id: 'oscillogram',
   label: 'Oscillogram',
   extras: [
     {
-      key: 'axis2', type: 'select', label: '2nd axis',
+      key: 'axis2', type: 'select', label: 'z axis',
       options: [
         { value: 'L', label: 'L [0 – 2×baseline km]' },
         { value: 'dcp', label: 'δCP [0–360°]' },
-        { value: 'rho', label: 'ρ [0–15 g/cm³]' },
+        { value: 'rho', label: 'ρ [0–5 g/cm³]' },
       ],
+    },
+    {
+      key: 'marker', type: 'marker', label: 'animate', step: 0.002,
+      select: {
+        key: 'anim',
+        options: [
+          { value: 'L', label: 'L' },
+          { value: 'E', label: 'E' },
+          { value: 'dcp', label: 'δCP' },
+        ],
+      },
     },
   ],
 
   create(container, store) {
-    const base = new SceneBase(container, { camPos: [7, 5, 8], ortho: store.ortho });
+    const base = new SceneBase(container, { camPos: [-7, 5, 8] });
 
     const geo = new THREE.PlaneGeometry(SX, SZ, N - 1, N - 1);
     geo.rotateX(-Math.PI / 2);
@@ -45,6 +58,13 @@ export default {
     const slice = new THREE.Line(sliceGeo, new THREE.LineBasicMaterial({ color: theme().hi }));
     base.scene.add(slice);
 
+    // marker cross-section along z at the swept E (visible only when animating E)
+    const eSliceGeo = new THREE.BufferGeometry();
+    eSliceGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+    const eSlice = new THREE.Line(eSliceGeo, new THREE.LineBasicMaterial({ color: theme().hi }));
+    eSlice.visible = false;
+    base.scene.add(eSlice);
+
     const grid = new THREE.GridHelper(Math.max(SX, SZ), 10, theme().grid1, theme().grid2);
     grid.position.y = -0.01;
     base.scene.add(grid);
@@ -52,7 +72,7 @@ export default {
     let xLabel = null, lastXKey = null;
     let zLabel = null, lastZKey = null;
 
-    let maxP = 1, lastHeld = null;
+    let maxP = 1, lastHeld = null, lastSurfKey = null;
 
     function update() {
       const ep = engineParams(store);
@@ -62,24 +82,31 @@ export default {
       const held = { dcp: store.dcp, L: store.L, rho: store.rho };
       const anti = store.anti;
 
-      const pos = geo.attributes.position;
-      const P = new Float32Array(pos.count);
-      maxP = 1e-6;
-      for (let i = 0; i < pos.count; i++) {
-        const E = E_MIN + (pos.getX(i) / SX + 0.5) * (E_MAX - E_MIN);
-        const v = a2min + (0.5 - pos.getZ(i) / SZ) * (a2max - a2min);
-        held[axis2] = v;
-        P[i] = pMuE(ep, E, held.L, held.rho, held.dcp, anti);
-        if (P[i] > maxP) maxP = P[i];
+      // the surface doesn't depend on the swept variable's held value — skip the
+      // rebuild when only that slider moved (e.g. play sweeping L with z axis = L)
+      const palette = PALETTES[store.palette] ?? PALETTES.rainbow;
+      const surfKey = JSON.stringify([ep, E_MIN, E_MAX, axis2, a2min, a2max, anti, store.palette, { ...held, [axis2]: 0 }]);
+      if (surfKey !== lastSurfKey) {
+        lastSurfKey = surfKey;
+        const pos = geo.attributes.position;
+        const P = new Float32Array(pos.count);
+        maxP = 1e-6;
+        for (let i = 0; i < pos.count; i++) {
+          const E = E_MIN + (pos.getX(i) / SX + 0.5) * (E_MAX - E_MIN);
+          const v = a2min + (0.5 - pos.getZ(i) / SZ) * (a2max - a2min);
+          held[axis2] = v;
+          P[i] = pMuE(ep, E, held.L, held.rho, held.dcp, anti);
+          if (P[i] > maxP) maxP = P[i];
+        }
+        for (let i = 0; i < pos.count; i++) {
+          pos.setY(i, (P[i] / maxP) * SY);
+          const [r, g, b] = palette(P[i] / maxP);
+          colors[3 * i] = r; colors[3 * i + 1] = g; colors[3 * i + 2] = b;
+        }
+        pos.needsUpdate = true;
+        geo.attributes.color.needsUpdate = true;
+        geo.computeVertexNormals();
       }
-      for (let i = 0; i < pos.count; i++) {
-        pos.setY(i, (P[i] / maxP) * SY);
-        const [r, g, b] = viridis(P[i] / maxP);
-        colors[3 * i] = r; colors[3 * i + 1] = g; colors[3 * i + 2] = b;
-      }
-      pos.needsUpdate = true;
-      geo.attributes.color.needsUpdate = true;
-      geo.computeVertexNormals();
 
       // slice: the legacy 2D curve at the axis-matching slider value
       const sv = { dcp: store.dcp, L: store.L, rho: store.rho }[axis2];
@@ -112,6 +139,41 @@ export default {
       lastHeld = { ...held, axis2, a2min, a2max, E_MIN, E_MAX, ep, anti };
     }
 
+    // play/marker animation: the marker drives the shared slider of the chosen
+    // variable. E sweeps the cross-section line (drawn at store.E), L or dCP moves
+    // the white slice when it is the z axis and morphs the surface when held.
+    let lastMarker = store.views.oscillogram.marker;
+    let eApplied = null;
+
+    function tick(dt) {
+      const vs = store.views.oscillogram;
+      if (vs.play) vs.marker = (vs.marker + dt / LOOP_S) % 1;
+      if (vs.marker !== lastMarker) {
+        const [v0, v1] = vs.anim === 'L' ? lRangeOf(store.basePreset)
+          : vs.anim === 'E' ? eRangeOf(store.basePreset) : RANGES.dcp;
+        const v = v0 + vs.marker * (v1 - v0);
+        // rounded to the shared sliders' steps
+        if (vs.anim === 'L') store.L = Math.round(v / 5) * 5;
+        else if (vs.anim === 'E') store.E = Math.round(v * 100) / 100;
+        else store.dcp = Math.round(v);
+      }
+      lastMarker = vs.marker;
+      eSlice.visible = vs.anim === 'E';
+      if (vs.anim === 'E' && lastHeld && (!eApplied || eApplied.held !== lastHeld || eApplied.E !== store.E)) {
+        eApplied = { held: lastHeld, E: store.E };
+        const x = ((store.E - lastHeld.E_MIN) / (lastHeld.E_MAX - lastHeld.E_MIN) - 0.5) * SX;
+        const held = { dcp: lastHeld.dcp, L: lastHeld.L, rho: lastHeld.rho };
+        const sp = eSliceGeo.attributes.position;
+        for (let i = 0; i < N; i++) {
+          const z = (i / (N - 1) - 0.5) * SZ;
+          held[lastHeld.axis2] = lastHeld.a2min + (0.5 - z / SZ) * (lastHeld.a2max - lastHeld.a2min);
+          const p = pMuE(lastHeld.ep, store.E, held.L, held.rho, held.dcp, lastHeld.anti);
+          sp.setXYZ(i, x, (p / maxP) * SY + 0.02, z);
+        }
+        sp.needsUpdate = true;
+      }
+    }
+
     function probe(event) {
       if (!lastHeld) return null;
       const hit = base.raycast(event, surface);
@@ -124,11 +186,12 @@ export default {
       return `E ${E.toFixed(2)} GeV · ${AXIS_LABEL[lastHeld.axis2]} ${v.toFixed(1)} · P ${p.toFixed(4)} · maxP ${maxP.toFixed(4)}`;
     }
 
-    return { base, update, probe, dispose: () => base.dispose() };
+    return { base, update, tick, probe, dispose: () => base.dispose() };
   },
 
   companion: {
     title: (store) => `Spectrum at L = ${store.L} km`,
+    markerDriven: true,
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
@@ -173,6 +236,64 @@ export default {
         ctx.beginPath();
         for (let i = 0; i < NPT; i++) {
           const x = P.X(E_MIN + (E_MAX - E_MIN) * i / (NPT - 1));
+          const y = P.Y(ys[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      });
+      if (store.views.oscillogram.anim === 'E') {
+        const mx = P.X(store.E);
+        ctx.strokeStyle = theme().hiCss;
+        ctx.lineWidth = dpr;
+        ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
+      }
+      legend(ctx, dpr, P, series);
+    },
+  },
+
+  // second panel: P vs dCP at the shared energy
+  companion2: {
+    title: (store) => `P vs δCP at E = ${store.E.toFixed(2)} GeV`,
+    markerDriven: true,
+    draw(canvas, store) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
+      const ep = engineParams(store);
+      const E = store.E;
+      const NPT = 240;
+      const series = [
+        { anti: false, color: '#e0604f', label: 'ν' },
+        { anti: true, color: '#5588e8', label: 'ν̅' },
+      ];
+      let pmax = 1e-6;
+      const data = series.map((s) => {
+        const ys = new Float32Array(NPT);
+        for (let i = 0; i < NPT; i++) {
+          const dcp = 360 * i / (NPT - 1);
+          ys[i] = pMuE(ep, E, store.L, store.rho, dcp, s.anti);
+          if (ys[i] > pmax) pmax = ys[i];
+        }
+        return ys;
+      });
+      const P = plot2d(ctx, w, h, dpr, { x: [0, 360], y: [0, pmax * 1.08], xTitle: 'δCP [deg]', yTitle: 'P(νμ→νe)' });
+
+      // dashed line at the current dCP slider value
+      const xp = P.X(store.dcp);
+      ctx.strokeStyle = theme().beam;
+      ctx.lineWidth = dpr;
+      ctx.setLineDash([4 * dpr, 4 * dpr]);
+      ctx.beginPath(); ctx.moveTo(xp, P.mt); ctx.lineTo(xp, P.mt + P.ph); ctx.stroke();
+      ctx.setLineDash([]);
+
+      data.forEach((ys, si) => {
+        ctx.strokeStyle = series[si].color;
+        ctx.lineWidth = 1.8 * dpr;
+        ctx.beginPath();
+        for (let i = 0; i < NPT; i++) {
+          const x = P.X(360 * i / (NPT - 1));
           const y = P.Y(ys[i]);
           if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }

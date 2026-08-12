@@ -7,7 +7,7 @@
 //     { key, type: 'range', label, min, max, step, unit? }
 //   ],
 //   create(container, store) -> {
-//     base: SceneBase,              // StageHost drives base.setOrtho(store.ortho)
+//     base: SceneBase,
 //     update(),                     // heavy rebuild; runs inside watchEffect — every reactive read
 //                                   // it makes becomes a dependency. Must NOT read play/marker.
 //     tick?(dt),                    // cheap per-frame work (play/marker animation); reads store freely
@@ -21,6 +21,7 @@
 //                                   // only if markerDriven is true
 //     markerDriven?: boolean,
 //   },
+//   companion2?: { ... },           // optional second panel, same shape as companion
 // }
 import oscillogram from './oscillogram.js';
 import tube from './tube.js';

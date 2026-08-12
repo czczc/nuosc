@@ -19,7 +19,7 @@ function makeSweep(store) {
   const ep = engineParams(store);
   const vs = store.views.sphere;
   const sweep = vs.sweep;
-  const rho = store.rho, anti = store.anti, Lfixed = store.L, Efixed = vs.E;
+  const rho = store.rho, anti = store.anti, Lfixed = store.L, Efixed = store.E;
   if (sweep === 'L') {
     const eig = eigH(hamiltonian(ep, Efixed, rho, anti));
     return { sweep, lo: 0, hi: vs.Lmax, stateAt: (sv) => ({ eig, L: sv }) };
@@ -55,14 +55,12 @@ export default {
         { value: 'dcp', label: 'over δCP' },
       ],
     },
-    { key: 'E', type: 'range', label: 'E [GeV]', min: (s) => eRangeOf(s.basePreset)[0], max: (s) => eRangeOf(s.basePreset)[1], step: 0.01 },
     { key: 'Lmax', type: 'range', label: 'L max [km]', min: 100, max: (s) => lRangeOf(s.basePreset)[1], step: 5 },
-    { key: 'play', type: 'checkbox', label: 'play' },
-    { key: 'marker', type: 'range', label: 'marker', min: 0, max: 1, step: 0.002 },
+    { key: 'marker', type: 'marker', label: 'animate', step: 0.002 },
   ],
 
   create(container, store) {
-    const base = new SceneBase(container, { camPos: [5, 3.5, 6], ortho: store.ortho });
+    const base = new SceneBase(container, { camPos: [5, 3.5, 6] });
 
     // unit sphere: faint solid shell + subtle wireframe + equator ring
     base.scene.add(new THREE.Mesh(

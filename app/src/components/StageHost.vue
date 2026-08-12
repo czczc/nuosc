@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onBeforeUnmount, ref, watch, watchEffect } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watchEffect } from 'vue';
 import { store } from '../store.js';
 
 const props = defineProps({ viewDef: { type: Object, required: true } });
@@ -8,7 +8,6 @@ const chip = ref('');
 
 let instance = null;
 let stopUpdate = null;
-let stopOrtho = null;
 let chipTimer = null;
 let lastEvent = null;
 
@@ -30,7 +29,6 @@ function refreshChip() {
 onMounted(() => {
   instance = props.viewDef.create(host.value, store);
   stopUpdate = watchEffect(() => instance.update());
-  stopOrtho = watch(() => store.ortho, (v) => instance.base?.setOrtho(v));
   if (instance.tick) instance.base.onTick = (dt) => instance.tick(dt);
   chipTimer = setInterval(refreshChip, 200);
   refreshChip();
@@ -39,7 +37,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearInterval(chipTimer);
   stopUpdate?.();
-  stopOrtho?.();
   instance?.dispose();
   instance = null;
 });
@@ -48,8 +45,8 @@ onBeforeUnmount(() => {
 <template>
   <div ref="host" class="stage" @pointermove="onMove">
     <span class="seg proj" aria-label="Projection">
-      <button v-for="p in ['yx', 'zx', 'zy']" :key="p" @click="snapTo(p)">
-        {{ p[0] }}-{{ p[1] }}
+      <button v-for="p in ['front', 'top', 'side']" :key="p" @click="snapTo(p)">
+        {{ p }}
       </button>
     </span>
     <div v-if="chip" class="hoverchip">{{ chip }}</div>

@@ -29,14 +29,13 @@ export default {
   id: 'biprob',
   label: 'Biprobability',
   extras: [
-    { key: 'Eslice', type: 'range', label: 'E slice [GeV]', min: (s) => eSpan(s.basePreset)[0], max: (s) => eSpan(s.basePreset)[1], step: 0.05 },
     { key: 'showNO', type: 'checkbox', label: 'Normal ordering' },
     { key: 'showIO', type: 'checkbox', label: 'Inverted ordering' },
   ],
   note: 'Ring = the ellipse traced as δCP sweeps 0–360° at one energy; the shared δCP slider moves the markers. E < 0.5 GeV excluded from the tube for readability.',
 
   create(container, store) {
-    const base = new SceneBase(container, { camPos: [15, 11, 13], target: [4, 4, 0], ortho: store.ortho });
+    const base = new SceneBase(container, { camPos: [15, 11, 13], target: [4, 4, 0] });
 
     const axMat = new THREE.LineBasicMaterial({ color: theme().axis });
     for (const pts of [
@@ -79,7 +78,7 @@ export default {
       const ep = engineParams(store);
       const dm31mag = Math.abs(ep.dm31);
       const vs = store.views.biprob;
-      const L = store.L, rho = store.rho, Es = vs.Eslice, dcpM = store.dcp * Math.PI / 180;
+      const L = store.L, rho = store.rho, Es = store.E, dcpM = store.dcp * Math.PI / 180;
       const [E_MIN, E_MAX] = eSpan(store.basePreset);
 
       const zKey = `E [GeV] (${E_MIN} - ${E_MAX})`;
@@ -148,7 +147,7 @@ export default {
   },
 
   companion: {
-    title: (store) => `Biprobability at E = ${store.views.biprob.Eslice} GeV`,
+    title: (store) => `Biprobability at E = ${store.E} GeV`,
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
@@ -159,7 +158,7 @@ export default {
       const ep = engineParams(store);
       const dm31mag = Math.abs(ep.dm31);
       const vs = store.views.biprob;
-      const Es = vs.Eslice, L = store.L, rho = store.rho, dcpM = store.dcp * Math.PI / 180;
+      const Es = store.E, L = store.L, rho = store.rho, dcpM = store.dcp * Math.PI / 180;
 
       const orders = [];
       if (vs.showNO) orders.push({ sign: 1, color: '#e07040' });
