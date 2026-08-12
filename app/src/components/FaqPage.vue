@@ -19,63 +19,69 @@ onMounted(() => {
     <article class="doc">
       <h2>FAQ</h2>
       <p class="sub">
-        nuglass visualizes three-flavor neutrino oscillation in constant-density matter — five 3D views,
-        each paired with a live 2D companion plot. This page describes the physics engines and what each
-        view is plotting.
+        nuglass is an interactive picture of neutrino oscillation — the strange way neutrinos change
+        from one type to another as they travel. Five 3D views, each paired with live 2D plots.
+        This page explains what each view shows and how the numbers behind it are computed.
       </p>
 
       <section id="faq-engines">
-        <h3>The physics engines</h3>
+        <h3>How the numbers are computed</h3>
         <p>
-          Everything on screen is computed live from the same physics: the 3×3 flavor Hamiltonian in
-          constant-density matter, with the standard matter potential
-          <span class="k">a = 2√2 G_F N_e E</span>. Oscillation parameters default to PDG 2023
-          (θ₁₂ = 33.82°, θ₁₃ = 8.61°, θ₂₃ = 48.3°, Δm²₂₁ = 7.39×10⁻⁵ eV², |Δm²₃₁| = 2.525×10⁻³ eV²,
-          δCP = 217°), all adjustable under “all parameters”. Antineutrinos are computed by flipping the
-          sign of E, which conjugates both the matter potential and the CP phase.
+          Everything on screen is calculated live in your browser from the real equations of
+          three-flavor neutrino oscillation, including the extra effect neutrinos feel when they travel
+          through the Earth’s rock (the “matter effect”). The default parameter values are the world
+          averages from experiments (PDG 2023), and every one of them can be adjusted under
+          “all parameters”. Antineutrinos — the mirror partners of neutrinos — are computed the same way
+          with the relevant signs flipped.
         </p>
-        <p>Two engines share the work:</p>
         <p>
-          <strong>NuFast-LBL</strong> — a JavaScript port of Denton &amp; Parke’s algorithm
+          Two calculators share the work. <strong>NuFast-LBL</strong>
           (<a href="https://arxiv.org/abs/2405.02400" target="_blank" rel="noopener">arXiv:2405.02400</a>,
-          <a href="https://github.com/PeterDenton/NuFast-LBL" target="_blank" rel="noopener">reference code</a>).
-          It gets the matter eigenvalues from one Newton refinement of the characteristic polynomial and
-          produces all nine oscillation probabilities in pure real arithmetic, at roughly 100 ns per point.
-          It powers the grid-heavy views: the oscillogram surface and the biprobability ring stack.
+          <a href="https://github.com/PeterDenton/NuFast-LBL" target="_blank" rel="noopener">reference code</a>)
+          is a very fast method by Denton &amp; Parke — quick enough to recompute a whole surface of
+          ~26,000 points every time you drag a slider. It powers the oscillogram and biprobability views.
+          The <strong>exact amplitude engine</strong> tracks the full quantum state of the neutrino, not
+          just the final probabilities; the state sphere and phasor views need that extra information.
+          The two are cross-checked against each other to better than one part in ten million.
         </p>
         <p>
-          <strong>Exact amplitude engine</strong> — builds the complex Hamiltonian and diagonalizes it with
-          a Jacobi eigensolver, giving full transition <em>amplitudes</em> and phases, not just
-          probabilities. The state sphere and phasor views need this: their content (coherences, phasor
-          arms) cannot be reconstructed from probabilities alone.
-        </p>
-        <p>
-          The two engines are cross-validated against each other to better than 10⁻⁷ in probability over an
-          (E, L) grid (10⁻¹⁰-level with a second Newton iteration).
-        </p>
-        <p>
-          <strong>Experiment presets</strong> — DUNE (1300 km, ρ = 2.85 g/cm³), NOvA (810 km, 2.84) and
-          T2K (295 km, 2.6) each carry their beam window and flux-peak energy. Selecting one snaps every
-          energy control to the peak, restricts the energy axes to the beam window, and scopes the baseline
-          range to 0 – 2L, so the first oscillation maximum sits mid-plot. Dragging any slider afterwards
-          shows the “custom” chip but keeps you inside that experiment’s ranges.
+          <strong>Experiment presets</strong> — DUNE (a 1300 km beam from Illinois to South Dakota),
+          NOvA (810 km, Illinois to Minnesota) and T2K (295 km, across Japan) each set the travel
+          distance, rock density and beam energy range of a real experiment. Picking one snaps every
+          control to that experiment’s values; dragging any slider afterwards shows the “custom” chip
+          but keeps you inside that experiment’s ranges, so the interesting region always stays on screen.
         </p>
       </section>
 
       <section id="faq-oscillogram">
         <h3>Oscillogram</h3>
         <p>
-          A surface of the appearance probability <span class="k">P(νμ→νe)</span> over energy E (x axis)
-          × a second axis of your choice — baseline L, CP phase δCP, or matter density ρ. Height and
-          viridis color both encode the probability. The white line is the slice at the current slider
-          value of the second-axis quantity, and it is exactly the curve shown in the companion spectrum.
+          A landscape of probability: the surface’s height and color show the chance that a muon
+          neutrino has turned into an electron neutrino by the time it is detected. Left-to-right is the
+          neutrino’s energy E; the depth axis is your choice of a second variable — the travel distance L,
+          the CP phase δCP (the parameter that can make neutrinos and antineutrinos behave differently),
+          or the density ρ of the rock the beam passes through. The palette menu in the top bar changes
+          the color scale.
         </p>
         <p>
-          How to read it: the ridges are oscillation maxima (at fixed L they march to lower E as
-          Δm²₃₁L/4E passes odd multiples of π/2); along the δCP axis you see the CP interference shift the
-          peaks; along ρ you see the matter resonance enhance ν (normal ordering) or ν̄ (inverted).
-          The companion plot overlays ν and ν̄ spectra at the current L, with the experiment’s flux peak
-          marked by a dashed line.
+          The white line is a slice through the landscape at the current slider setting, and it is
+          exactly the curve drawn in the first 2D panel below (probability vs energy, for neutrinos and
+          antineutrinos, with the experiment’s beam peak dashed). The second 2D panel shows how the
+          probability at the current energy changes as δCP goes around its full circle.
+        </p>
+        <p>
+          Press ▶ on the “animate” row to set the picture in motion, sweeping the distance, the energy,
+          or δCP — the matching slider in the controls panel moves along with it, so you can pause
+          anywhere and continue by hand. The front / top / side buttons swing the camera to flat views:
+          “top” looks straight down and turns the surface into the classic color-map oscillogram that
+          experiments publish.
+        </p>
+        <p>
+          How to read it: the ridges are where the oscillation effect is strongest, and each experiment
+          aims its beam energy at the biggest one. Animating δCP makes the ridges slide back and forth —
+          that shift, compared between neutrinos and antineutrinos, is exactly what CP-violation
+          searches measure. Along the ρ axis you can watch denser matter boost the signal for neutrinos
+          or for antineutrinos, depending on which ordering of the neutrino masses nature chose.
         </p>
         <p><button class="linkish" @click="openView('oscillogram')">open this view →</button></p>
       </section>
@@ -83,19 +89,20 @@ onMounted(() => {
       <section id="faq-biprob">
         <h3>Biprobability</h3>
         <p>
-          The Minakata–Nunokawa biprobability plot
-          (<a href="https://arxiv.org/abs/hep-ph/0108085" target="_blank" rel="noopener">arXiv:hep-ph/0108085</a>):
-          neutrino appearance <span class="k">P(νμ→νe)</span> on x against antineutrino appearance
-          <span class="k">P̄(ν̄μ→ν̄e)</span> on y, at fixed E and L. As δCP sweeps 0–360° the point traces
-          an ellipse. The 3D view stacks these ellipses along energy, for both mass orderings
-          (orange = normal, blue = inverted); the spheres mark the current δCP and the white connector
-          shows the ordering difference at the slice energy.
+          Two chances plotted against each other: the probability that a muon neutrino becomes an
+          electron neutrino (horizontal) versus the same probability for antineutrinos (vertical), at
+          one energy and distance. As δCP sweeps through its full circle, the point traces out an
+          ellipse. The 3D view stacks those ellipses along energy, for the two possible orderings of the
+          neutrino masses (orange = normal, blue = inverted); the small spheres mark the current δCP,
+          and the connecting line shows the ordering difference.
+          (After Minakata &amp; Nunokawa,
+          <a href="https://arxiv.org/abs/hep-ph/0108085" target="_blank" rel="noopener">arXiv:hep-ph/0108085</a>.)
         </p>
         <p>
-          How to read it: displacement of the point from the <span class="k">P = P̄</span> diagonal is
-          direct CP violation; the separation between the orange and blue ellipses is the mass-ordering
-          signal (driven by the matter effect). Where the ellipses overlap, an experiment at that energy
-          cannot distinguish the orderings from these channels alone.
+          How to read it: if neutrinos and antineutrinos behaved identically, the point would sit on the
+          gray diagonal — its distance from that diagonal is CP violation, seen live. The gap between
+          the orange and blue rings is what lets experiments tell the two mass orderings apart; where
+          the rings overlap, that energy alone cannot decide.
         </p>
         <p><button class="linkish" @click="openView('biprob')">open this view →</button></p>
       </section>
@@ -103,16 +110,16 @@ onMounted(() => {
       <section id="faq-sphere">
         <h3>State sphere</h3>
         <p>
-          A Bloch-sphere picture of the evolving flavor state, projected onto the νe–νμ subspace: the north
-          pole is pure νe, the south pole pure νμ, and the transverse components are the quantum coherences
-          between them. The trajectory shows the state of an initial νμ evolving along L (or, in the other
-          sweep modes, the state arriving at the detector as a function of E or δCP).
+          The neutrino’s quantum state drawn as an arrow inside a globe. The north pole means “certainly
+          an electron neutrino”, the south pole “certainly a muon neutrino”, and everywhere in between
+          is a quantum mixture of the two. As the neutrino travels, the arrow swings around and traces
+          the colored path — press ▶ to watch it move.
         </p>
         <p>
-          How to read it: a genuine two-flavor oscillation would trace a circle on the sphere’s surface.
-          The full three-flavor state lives in an 8-dimensional space, so this 3D shadow can shrink:
-          a vector shorter than 1 means probability has leaked into ντ. The companion plot shows all three
-          probabilities P(νμ→νe/μ/τ) along the sweep with the marker synchronized to the 3D animation.
+          How to read it: a textbook two-type oscillation would keep the arrow’s tip on the globe’s
+          surface. Here the tip dips inside — a shorter arrow means part of the probability has leaked
+          into the third type, the tau neutrino, which this picture cannot show directly. The 2D panel
+          plots all three probabilities along the sweep, with its marker synced to the 3D arrow.
         </p>
         <p><button class="linkish" @click="openView('sphere')">open this view →</button></p>
       </section>
@@ -120,17 +127,17 @@ onMounted(() => {
       <section id="faq-phasors">
         <h3>Phasors</h3>
         <p>
-          The νe appearance amplitude decomposed into its three matter-eigenstate contributions,
-          <span class="k">A(L) = Σᵢ cᵢ e^(−iλᵢL)</span>, where the coefficients cᵢ come from the mixing
-          matrix in matter and the λᵢ are the matter eigenvalues. The transverse plane is the complex
-          plane; the colored curves are the running partial sums, and the white curve is the resultant
-          amplitude A. At the marker, the arrows show the head-to-tail phasor sum at that point of the
-          sweep. The floor curve is <span class="k">|A|² = P(νμ→νe)</span>.
+          Why oscillation happens, drawn as directly as possible. Quantum mechanics adds up the three
+          ways a muon neutrino can become an electron neutrino as three arrows in a plane — one for each
+          neutrino mass, each rotating at its own speed as the neutrino travels. The colored curves show
+          the arrows chained head to tail, the white curve is their total, and the curve on the floor is
+          the resulting probability.
         </p>
         <p>
-          How to read it: oscillation is literally interference here — the probability peaks where the
-          three arms align and dips where they cancel. δCP rotates the relative phases of the arms
-          (changing where they align), while E and ρ change the arm lengths through the matter mixing.
+          How to read it: the probability peaks where the arrows line up and vanishes where they cancel —
+          oscillation is interference, the same phenomenon as overlapping ripples on a pond. Changing
+          δCP rotates the arrows relative to each other (moving where they align), while energy and rock
+          density change the arrows’ lengths.
         </p>
         <p><button class="linkish" @click="openView('phasors')">open this view →</button></p>
       </section>
@@ -138,17 +145,17 @@ onMounted(() => {
       <section id="faq-tube">
         <h3>Flavor tube</h3>
         <p>
-          The flavor content of an initial νμ along the baseline. Each cross-section of the tube is a pie
-          of the three flavor probabilities P(νμ→νe/μ/τ) at that L; the radius is constant because the
-          fractions always sum to 1 (unitarity). The disk rides the marker and shows the instantaneous
-          composition. The “stacked bands” mode is the unrolled version — a stacked area plot extruded
-          into 3D, whose flat top edge is the same unitarity check.
+          Follow a muon neutrino down the beamline and watch its identity mix. Each slice of the tube is
+          a pie chart of the three possibilities at that distance: still a muon neutrino (blue), turned
+          into a tau neutrino (green), or turned into an electron neutrino (red). The tube’s thickness
+          never changes, because the three chances always add up to 100%. The disk rides the animation
+          marker and shows the mix at one spot; “stacked bands” unrolls the same information into a
+          stacked area chart.
         </p>
         <p>
-          How to read it: the dominant blue (νμ) sector thins where the oscillation transfers probability
-          to green (ντ, the main partner at atmospheric frequencies) with a small red (νe) appearance
-          wedge — the wedge an appearance experiment actually measures. The companion plot is the matching
-          2D stacked area chart.
+          How to read it: most of what leaves blue goes to green — muon neutrinos mostly turn into tau
+          neutrinos. The thin red wedge is the electron-neutrino appearance that experiments like DUNE
+          actually count. The 2D panel is the matching flat chart.
         </p>
         <p><button class="linkish" @click="openView('tube')">open this view →</button></p>
       </section>
