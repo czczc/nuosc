@@ -1,11 +1,12 @@
 <script setup>
-import { store, applyPreset } from './store.js';
+import { store, applyPreset, setTheme } from './store.js';
 import { PRESETS } from './engines/constants.js';
 import { VIEWS, VIEW_MAP } from './views/index.js';
 import StageHost from './components/StageHost.vue';
 import ControlsCard from './components/ControlsCard.vue';
 import ViewExtras from './components/ViewExtras.vue';
 import CompanionPanel from './components/CompanionPanel.vue';
+import FaqPage from './components/FaqPage.vue';
 
 const presetNames = Object.keys(PRESETS);
 </script>
@@ -15,10 +16,14 @@ const presetNames = Object.keys(PRESETS);
     <header>
       <img class="logo" src="./assets/logo.svg" alt="nuosc" />
       <nav class="tabs" aria-label="View">
-        <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id }" @click="store.view = v.id">
+        <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id && !store.faq }"
+          @click="store.view = v.id; store.faq = null">
           {{ v.label }}
         </button>
       </nav>
+      <button class="faqbtn" :class="{ on: !!store.faq }" @click="store.faq = store.faq ? null : 'engines'">
+        FAQ
+      </button>
       <div class="right">
         <span v-for="p in presetNames" :key="p" class="chip" :class="{ on: store.preset === p }" role="button"
           tabindex="0" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">{{ p }}</span>
@@ -27,11 +32,17 @@ const presetNames = Object.keys(PRESETS);
           <button :class="{ on: store.ortho }" @click="store.ortho = true">ortho</button>
           <button :class="{ on: !store.ortho }" @click="store.ortho = false">persp</button>
         </span>
+        <button class="themebtn" :title="store.theme === 'dark' ? 'switch to light mode' : 'switch to dark mode'"
+          @click="setTheme(store.theme === 'dark' ? 'light' : 'dark')">
+          {{ store.theme === 'dark' ? '☀' : '☾' }}
+        </button>
       </div>
     </header>
 
     <main>
-      <StageHost :key="store.view" :view-def="VIEW_MAP[store.view]" />
+      <FaqPage v-if="store.faq" />
+      <template v-else>
+      <StageHost :key="store.view + '-' + store.theme" :view-def="VIEW_MAP[store.view]" />
       <aside>
         <ControlsCard />
         <ViewExtras :key="store.view" :view-def="VIEW_MAP[store.view]" />
@@ -41,6 +52,7 @@ const presetNames = Object.keys(PRESETS);
           + exact 3-flavor · PDG 2023 · cross-validated to 1e-7
         </div>
       </aside>
+      </template>
     </main>
   </div>
 </template>
@@ -66,6 +78,26 @@ header {
   cursor: pointer;
 }
 .tabs button:hover { color: var(--text); }
+.faqbtn {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 12px;
+  cursor: pointer;
+}
+.faqbtn:hover { color: var(--text); }
+.faqbtn.on { color: var(--accent); border-color: var(--accent); }
+.themebtn {
+  width: 26px; height: 26px;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: none; color: var(--muted);
+  font-size: 13px; line-height: 1;
+  padding: 0; cursor: pointer;
+}
+.themebtn:hover { color: var(--accent); border-color: var(--accent); }
 .tabs button.on { color: var(--accent); font-weight: 600; }
 .tabs button.on::after {
   content: '';

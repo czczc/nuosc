@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { SceneBase, viridis, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
 import { engineParams, PRESETS, eRangeOf, lRangeOf } from '../engines/constants.js';
+import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
 const SX = 8, SZ = 8, SY = 2.2, N = 161;
@@ -41,10 +42,10 @@ export default {
 
     const sliceGeo = new THREE.BufferGeometry();
     sliceGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
-    const slice = new THREE.Line(sliceGeo, new THREE.LineBasicMaterial({ color: 0xffffff }));
+    const slice = new THREE.Line(sliceGeo, new THREE.LineBasicMaterial({ color: theme().hi }));
     base.scene.add(slice);
 
-    const grid = new THREE.GridHelper(Math.max(SX, SZ), 10, 0x334455, 0x223344);
+    const grid = new THREE.GridHelper(Math.max(SX, SZ), 10, theme().grid1, theme().grid2);
     grid.position.y = -0.01;
     base.scene.add(grid);
 
@@ -133,7 +134,7 @@ export default {
       const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0b0e13'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
       const ep = engineParams(store);
       const [E_MIN, E_MAX] = eRangeOf(store.basePreset);
       const NPT = 240;
@@ -157,13 +158,13 @@ export default {
       const beam = PRESETS[store.basePreset];
       if (beam) {
         const xp = P.X(beam.Epeak);
-        ctx.strokeStyle = 'rgba(78,205,180,0.55)';
+        ctx.strokeStyle = theme().beam;
         ctx.lineWidth = dpr;
         ctx.setLineDash([4 * dpr, 4 * dpr]);
         ctx.beginPath(); ctx.moveTo(xp, P.mt); ctx.lineTo(xp, P.mt + P.ph); ctx.stroke();
         ctx.setLineDash([]);
         ctx.font = `${10 * dpr}px ui-monospace, monospace`;
-        ctx.fillStyle = 'rgba(78,205,180,0.8)';
+        ctx.fillStyle = theme().beamText;
         ctx.fillText(`peak ${beam.Epeak} GeV`, xp + 4 * dpr, P.mt + P.ph - 6 * dpr);
       }
       data.forEach((ys, si) => {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { theme } from '../theme.js';
 
 // matplotlib viridis, linearly interpolated; t in [0,1] -> [r,g,b] in [0,1]
 const VIRIDIS = [
@@ -23,7 +24,7 @@ function textCanvas(text) {
   c.width = Math.ceil(g.measureText(text).width) + 16;
   c.height = 64;
   g.font = font; // resizing the canvas resets context state
-  g.fillStyle = '#9aa7b5';
+  g.fillStyle = theme().label;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText(text, c.width / 2, c.height / 2);
@@ -44,7 +45,7 @@ export class SceneBase {
   constructor(container, { camPos = [7, 5, 8], target = [0, 0, 0], ortho = true } = {}) {
     this.container = container;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0b0e13);
+    this.scene.background = new THREE.Color(theme().stage);
 
     const aspect = container.clientWidth / Math.max(1, container.clientHeight);
     this.persp = new THREE.PerspectiveCamera(50, aspect, 0.1, 300);

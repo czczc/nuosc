@@ -48,7 +48,7 @@ onBeforeUnmount(() => {
   height: 180px;
   border-radius: 6px;
   overflow: hidden;
-  background: #0b0e13;
+  background: var(--stage-bg);
 }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 </style>

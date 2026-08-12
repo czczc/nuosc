@@ -1,6 +1,7 @@
 // Minimal matplotlib-style scaffold for the 2D companion canvases.
 // plot2d() draws the frame, grid, ticks and outside axis titles, and returns
 // data->pixel mappers plus the plot rectangle for the caller's curves.
+import { theme } from '../theme.js';
 
 function niceStep(span, n) {
   const raw = span / n;
@@ -29,7 +30,8 @@ export function plot2d(ctx, w, h, dpr, { x: [x0, x1], y: [y0, y1], xTitle, yTitl
   const X = (x) => ml + pw * (x - x0) / (x1 - x0);
   const Y = (y) => mt + ph * (1 - (y - y0) / (y1 - y0));
 
-  const gridCol = 'rgba(140,155,170,0.15)', frameCol = 'rgba(140,155,170,0.5)', ink = '#9aa7b5';
+  const t = theme();
+  const gridCol = t.plotGrid, frameCol = t.plotFrame, ink = t.ink;
   const xt = ticks(x0, x1, xTicks), yt = ticks(y0, y1, yTicks);
   ctx.lineWidth = dpr;
 
@@ -81,7 +83,7 @@ export function legend(ctx, dpr, P, items) {
   const wds = items.map((it) => ctx.measureText(it.label).width);
   const total = wds.reduce((a, b) => a + b, 0) + 10 * dpr * (items.length - 1);
   let x = P.ml + P.pw - total - 8 * dpr;
-  ctx.fillStyle = 'rgba(11,14,19,0.75)';
+  ctx.fillStyle = theme().legendBg;
   ctx.fillRect(x - 4 * dpr, P.mt + 3 * dpr, total + 8 * dpr, 14 * dpr);
   for (let i = 0; i < items.length; i++) {
     ctx.fillStyle = items[i].color;

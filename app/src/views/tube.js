@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { hamiltonian, eigH, prob } from '../engines/jacobi.js';
 import { engineParams, eRangeOf, lRangeOf } from '../engines/constants.js';
+import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
 // world extents: x = L over [-SX/2, SX/2], y = stacked flavor fraction (P=1 -> SY), z = extrusion
@@ -49,7 +50,7 @@ export default {
   create(container, store) {
     const base = new SceneBase(container, { camPos: [-6, 4.5, 8.5], target: [0, TUBE_CY, 0], ortho: store.ortho });
 
-    const grid = new THREE.GridHelper(SX, 10, 0x334455, 0x223344);
+    const grid = new THREE.GridHelper(SX, 10, theme().grid1, theme().grid2);
     grid.position.y = -0.01;
     base.scene.add(grid);
 
@@ -171,11 +172,11 @@ export default {
 
     // ---------- marker (bands mode): sphere on top of the stack + vertical line ----------
     const markerSphere = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12),
-      new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x666666 }));
+      new THREE.MeshLambertMaterial({ color: theme().hi, emissive: 0x666666 }));
     base.scene.add(markerSphere);
     const markerLineGeo = new THREE.BufferGeometry();
     markerLineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(2 * 3), 3));
-    const markerLine = new THREE.Line(markerLineGeo, new THREE.LineBasicMaterial({ color: 0xffffff }));
+    const markerLine = new THREE.Line(markerLineGeo, new THREE.LineBasicMaterial({ color: theme().hi }));
     base.scene.add(markerLine);
 
     let eig = null, lastLmax = 5000;
@@ -262,7 +263,7 @@ export default {
       const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0b0e13'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const st = store.views.tube;
       const ep = engineParams(store);
@@ -293,7 +294,7 @@ export default {
 
       // white vertical marker line at the marker fraction (allowed: markerDriven)
       const mx = P.X(st.marker * st.Lmax);
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = theme().hiCss;
       ctx.lineWidth = dpr;
       ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
 

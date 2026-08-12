@@ -57,15 +57,15 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.stage { position: relative; flex: 1; min-width: 0; min-height: 320px; background: #0b0e13; }
+.stage { position: relative; flex: 1; min-width: 0; min-height: 320px; background: var(--stage-bg); }
 .stage :deep(canvas) { display: block; }
 .proj { position: absolute; left: 10px; top: 10px; z-index: 5; }
-.proj button { background: rgba(10, 13, 18, 0.78); }
+.proj button { background: var(--chip-bg); }
 .hoverchip {
   position: absolute; right: 10px; bottom: 10px; z-index: 5;
   font-family: var(--font-mono); font-size: 11px;
   font-variant-numeric: tabular-nums;
-  background: rgba(10, 13, 18, 0.78); color: #cfe7df;
+  background: var(--chip-bg); color: var(--chip-ink);
   padding: 4px 8px; border-radius: 5px;
   pointer-events: none;
   max-width: 90%;

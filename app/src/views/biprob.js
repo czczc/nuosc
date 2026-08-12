@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
 import { engineParams, eRangeOf } from '../engines/constants.js';
+import { theme } from '../theme.js';
 import { plot2d } from './plot2d.js';
 
 const SP = 8, SZ = 8;
@@ -37,7 +38,7 @@ export default {
   create(container, store) {
     const base = new SceneBase(container, { camPos: [15, 11, 13], target: [4, 4, 0], ortho: store.ortho });
 
-    const axMat = new THREE.LineBasicMaterial({ color: 0x667788 });
+    const axMat = new THREE.LineBasicMaterial({ color: theme().axis });
     for (const pts of [
       [[0, 0, 0], [SP + 0.6, 0, 0]], [[0, 0, 0], [0, SP + 0.6, 0]], [[0, 0, -SZ / 2 - 0.6], [0, 0, SZ / 2 + 0.6]],
     ]) base.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map((p) => new THREE.Vector3(...p))), axMat));
@@ -68,7 +69,7 @@ export default {
     }
     const connector = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
-      new THREE.LineBasicMaterial({ color: 0xffffff })
+      new THREE.LineBasicMaterial({ color: theme().hi })
     );
     base.scene.add(connector);
 
@@ -153,7 +154,7 @@ export default {
       const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0b0e13'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const ep = engineParams(store);
       const dm31mag = Math.abs(ep.dm31);
@@ -177,7 +178,7 @@ export default {
       const P = plot2d(ctx, w, h, dpr, { x: [0, m], y: [0, m], xTitle: 'P(νμ→νe)', yTitle: 'P̄(ν̄μ→ν̄e)' });
       const X = (p) => P.X(p), Y = (p) => P.Y(p);
 
-      ctx.strokeStyle = 'rgba(140,155,170,0.35)';
+      ctx.strokeStyle = theme().plotFrame;
       ctx.lineWidth = dpr;
       ctx.setLineDash([4 * dpr, 4 * dpr]);
       ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(m), Y(m)); ctx.stroke();
@@ -193,7 +194,7 @@ export default {
         ctx.beginPath(); ctx.arc(X(o.pM), Y(o.pbM), 4 * dpr, 0, 2 * Math.PI); ctx.fill();
       }
       ctx.font = `${10 * dpr}px ui-monospace, monospace`;
-      ctx.fillStyle = '#9aa7b5';
+      ctx.fillStyle = theme().ink;
       ctx.fillText('δCP sweep', P.ml + 5 * dpr, P.mt + 13 * dpr);
     },
   },

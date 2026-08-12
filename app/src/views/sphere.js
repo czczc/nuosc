@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { SceneBase, viridis, textSprite } from '../three/SceneBase.js';
 import { C, hamiltonian, eigH, amp, prob } from '../engines/jacobi.js';
 import { engineParams, DEG, eRangeOf, lRangeOf } from '../engines/constants.js';
+import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
 const R = 2.5;                 // sphere radius in world units
@@ -66,10 +67,10 @@ export default {
     // unit sphere: faint solid shell + subtle wireframe + equator ring
     base.scene.add(new THREE.Mesh(
       new THREE.SphereGeometry(R, 48, 32),
-      new THREE.MeshLambertMaterial({ color: 0x334455, transparent: true, opacity: 0.10, depthWrite: false })));
+      new THREE.MeshLambertMaterial({ color: theme().grid1, transparent: true, opacity: 0.10, depthWrite: false })));
     base.scene.add(new THREE.Mesh(
       new THREE.SphereGeometry(R, 24, 16),
-      new THREE.MeshBasicMaterial({ color: 0x334455, wireframe: true, transparent: true, opacity: 0.35 })));
+      new THREE.MeshBasicMaterial({ color: theme().grid1, wireframe: true, transparent: true, opacity: 0.35 })));
     {
       const pts = [];
       for (let i = 0; i <= 128; i++) {
@@ -77,7 +78,7 @@ export default {
         pts.push(new THREE.Vector3(R * Math.cos(a), 0, R * Math.sin(a)));
       }
       base.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({ color: 0x556677, transparent: true, opacity: 0.6 })));
+        new THREE.LineBasicMaterial({ color: theme().axis, transparent: true, opacity: 0.6 })));
     }
 
     const nLabel = textSprite('νe');
@@ -168,7 +169,7 @@ export default {
       const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0b0e13'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const { sweep, lo, hi, stateAt } = makeSweep(store);
       const NPT = 200;
@@ -197,7 +198,7 @@ export default {
 
       // marker (markerDriven: CompanionPanel's rAF repaints this)
       const mx = P.X(lo + (hi - lo) * store.views.sphere.marker);
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.strokeStyle = theme().hiCss;
       ctx.lineWidth = dpr;
       ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
 

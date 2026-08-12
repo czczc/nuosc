@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { C, hamiltonian, eigH, phasorTerms } from '../engines/jacobi.js';
 import { engineParams, DEG, eRangeOf, lRangeOf } from '../engines/constants.js';
+import { theme } from '../theme.js';
 import { plot2d } from './plot2d.js';
 
 const SX = 10, N = 1024, NSWEEP = 512;   // N samples for x = L (one eigH); NSWEEP for x = E / dcp (eigH per sample)
@@ -87,18 +88,18 @@ export default {
     }
 
     // x-axis (|A| = 0 reference) and floor grid
-    const axisLine = makeLine(2, 0x556677, 1);
+    const axisLine = makeLine(2, theme().axis, 1);
     axisLine.geometry.attributes.position.set([-SX / 2, 0, 0, SX / 2, 0, 0]);
     axisLine.geometry.attributes.position.needsUpdate = true;
-    const grid = new THREE.GridHelper(SX + 2, 12, 0x334455, 0x223344);
+    const grid = new THREE.GridHelper(SX + 2, 12, theme().grid1, theme().grid2);
     grid.position.y = FLOOR_Y - 0.01;
     base.scene.add(grid);
 
     // curves: partial sums s1, s2 and the white resultant A(x); floor P(x)
     const s1Line = makeLine(N, COL[0], 0.5);
     const s2Line = makeLine(N, COL[1], 0.5);
-    const ALine = makeLine(N, 0xffffff, 1);
-    const floorLine = makeLine(N, 0x66ccff, 1);
+    const ALine = makeLine(N, theme().hi, 1);
+    const floorLine = makeLine(N, theme().pCurve, 1);
 
     // cross-section disk (complex plane) at the marker
     const diskGeo = new THREE.CircleGeometry(1, 48);
@@ -114,12 +115,12 @@ export default {
       base.scene.add(a);
       return a;
     });
-    const resArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xffffff, 0.14, 0.08);
+    const resArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, theme().hi, 0.14, 0.08);
     base.scene.add(resArrow);
 
     // drop-line from the cross-section to the floor probability curve, plus a dot on it
-    const dropLine = makeLine(3, 0xffffff, 0.4);
-    const floorDot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    const dropLine = makeLine(3, theme().hi, 0.4);
+    const floorDot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), new THREE.MeshBasicMaterial({ color: theme().hi }));
     base.scene.add(floorDot);
 
     // static labels
@@ -238,7 +239,7 @@ export default {
       const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0b0e13'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const ep = engineParams(store);
       const { xaxis, E, Lmax, marker } = store.views.phasors; // marker OK here: markerDriven
@@ -257,7 +258,7 @@ export default {
 
       const P = plot2d(ctx, w, h, dpr, { x: [x0, x1], y: [0, pmax * 1.08], xTitle: AXIS_LABEL[xaxis], yTitle: 'P(νμ→νe)' });
 
-      ctx.strokeStyle = '#66ccff';
+      ctx.strokeStyle = theme().pCurveCss;
       ctx.lineWidth = 1.8 * dpr;
       ctx.beginPath();
       for (let i = 0; i < NPT; i++) {
@@ -268,7 +269,7 @@ export default {
       ctx.stroke();
 
       const mx = P.X(x0 + (x1 - x0) * marker);
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.strokeStyle = theme().hiCss;
       ctx.lineWidth = dpr;
       ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
     },

@@ -17,7 +17,10 @@ function lim(v) {
 
 <template>
   <div v-if="viewDef.extras.length || viewDef.note" class="card">
-    <h3>{{ viewDef.label }}</h3>
+    <h3>
+      {{ viewDef.label }}
+      <button class="faqlink" title="About this view (FAQ)" @click="store.faq = viewDef.id">?</button>
+    </h3>
     <template v-for="e in viewDef.extras" :key="e.key">
       <div v-if="e.type === 'select'" class="ctl-row">
         <label :for="'x-' + e.key">{{ e.label }}</label>
@@ -40,6 +43,15 @@ function lim(v) {
 </template>
 
 <style scoped>
+h3 { display: flex; align-items: center; justify-content: space-between; }
+.faqlink {
+  width: 16px; height: 16px;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: none; color: var(--muted);
+  font-size: 10px; line-height: 1;
+  padding: 0; cursor: pointer;
+}
+.faqlink:hover { color: var(--accent); border-color: var(--accent); }
 select {
   background: var(--surface-3);
   border: 1px solid var(--border);
