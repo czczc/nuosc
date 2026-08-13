@@ -1,6 +1,22 @@
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import { store } from '../store.js';
+
+const BIBTEX = `@misc{nuglass,
+  author       = {Zhang, Chao},
+  title        = {nuglass: interactive 3D visualization of neutrino oscillation},
+  year         = {2026},
+  howpublished = {\\url{https://czczc.github.io/nuglass/}},
+  note         = {Source code: \\url{https://github.com/czczc/nuglass}}
+}`;
+
+const copied = ref(false);
+
+function copyBibtex() {
+  navigator.clipboard.writeText(BIBTEX);
+  copied.value = true;
+  setTimeout(() => { copied.value = false; }, 1500);
+}
 
 function openView(id) {
   store.view = id;
@@ -159,6 +175,15 @@ onMounted(() => {
         </p>
         <p><button class="linkish" @click="openView('tube')">open this view →</button></p>
       </section>
+
+      <section id="faq-cite">
+        <h3>How to cite</h3>
+        <p>
+          If you use nuglass in a paper or talk, please cite it as:
+        </p>
+        <pre class="bib">{{ BIBTEX }}</pre>
+        <p><button class="linkish" @click="copyBibtex">{{ copied ? 'copied ✓' : 'copy BibTeX' }}</button></p>
+      </section>
     </article>
   </div>
 </template>
@@ -200,5 +225,15 @@ p { margin: 10px 0; }
   white-space: nowrap;
 }
 .linkish { font-size: 14px; }
+.bib {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
 a { color: var(--accent); }
 </style>
