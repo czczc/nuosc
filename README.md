@@ -1,4 +1,4 @@
-# nuglass
+# NuGlass
 
 Interactive 3D visualization of long-baseline neutrino oscillation (νμ → νe), built with Vue 3 and three.js.
 
@@ -22,12 +22,12 @@ Pushes to `main` that touch `app/` are automatically tested, built, and deployed
 
 ## How to cite
 
-If you use nuglass in a paper or talk, please cite it as:
+If you use NuGlass in a paper or talk, please cite it as:
 
 ```bibtex
 @misc{nuglass,
   author       = {Zhang, Chao},
-  title        = {nuglass: interactive 3D visualization of neutrino oscillation},
+  title        = {NuGlass: interactive 3D visualization of neutrino oscillation},
   year         = {2026},
   howpublished = {\url{https://czczc.github.io/nuglass/}},
   note         = {Source code: \url{https://github.com/czczc/nuglass}}

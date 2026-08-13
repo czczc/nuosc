@@ -1,4 +1,4 @@
-// Eigenstate phasors: the three matter-eigenstate contributions to the numu->nue amplitude,
+// Eigenstate phasors: the three matter-eigenstate contributions to the numu->nue (or numu->nutau) amplitude,
 // A(x) = sum_i c_i e^{-i lam_i L}, drawn as a resultant 3D curve (x = swept variable, transverse
 // (z, y) = complex plane), with head-to-tail arrows at a marker cross-section and the floor
 // probability curve P = |A|^2. Ported from prototypes/phasor-waves.html (validated, ticket #6).
@@ -10,9 +10,13 @@ import { theme } from '../theme.js';
 import { plot2d } from './plot2d.js';
 
 const SX = 10, N = 1024, NSWEEP = 512;   // N samples for x = L (one eigH); NSWEEP for x = E / dcp (eigH per sample)
-const AMP_SCALE = 2.5 / 0.35;            // |A| = 0.35 -> radius 2.5
-const FLOOR_Y = -3, P_SCALE = 8;         // floor curve: z = P * P_SCALE at y = FLOOR_Y
-const COL = [0xe0a030, 0x30b0d0, 0xb070e0];
+// per-channel: final-flavor index and amplitude scale (typical |A| -> radius 2.5; nutau amplitudes are ~3x larger)
+const CHANNEL = {
+  e: { beta: 0, label: 'P(νμ→νe)', ampScale: 2.5 / 0.35 },
+  tau: { beta: 2, label: 'P(νμ→ντ)', ampScale: 2.5 / 1.0 },
+};
+const FLOOR_Y = -3, P_DEPTH = 4;         // floor curve at y = FLOOR_Y, toward -z (top view: up-screen), autoscaled so pmax spans P_DEPTH
+const COL = [0xe0a030, 0x4cb85e, 0xb070e0]; // arm 2 is green, not blue: the floor P curve is already blue
 const AXIS_LABEL = { L: 'L [km]', E: 'E [GeV]', dcp: 'δCP [deg]' };
 const LOOP_S = 10;                       // ~10 s per sweep of the marker
 
@@ -30,20 +34,20 @@ function fmtVal(xaxis, xv) {
   return `${xv.toFixed(0)} km`;
 }
 
-// Matter-eigenstate terms of the numu->nue amplitude, sorted by eigenvalue ascending
+// Matter-eigenstate terms of the numu->(beta) amplitude, sorted by eigenvalue ascending
 // (stable arm color identity) with min(lam) subtracted (overall phase removal; |A|^2 unchanged).
-function decompose(ep, E, rho, anti) {
-  const terms = phasorTerms(eigH(hamiltonian(ep, E, rho, anti)), 1, 0);
+function decompose(ep, E, rho, anti, beta) {
+  const terms = phasorTerms(eigH(hamiltonian(ep, E, rho, anti)), 1, beta);
   terms.sort((a, b) => a.lam - b.lam);
   const lmin = terms[0].lam;
   return terms.map((t) => ({ c: t.c, lam: t.lam - lmin }));
 }
 
 // Terms at swept value xv; in the E and dcp modes the swept quantity overrides the held one.
-function decomposeAt(ep, xaxis, xv, E, rho, anti) {
-  if (xaxis === 'E') return decompose(ep, xv, rho, anti);
-  if (xaxis === 'dcp') return decompose({ ...ep, delta: xv * DEG }, E, rho, anti);
-  return decompose(ep, E, rho, anti);
+function decomposeAt(ep, xaxis, xv, E, rho, anti, beta) {
+  if (xaxis === 'E') return decompose(ep, xv, rho, anti, beta);
+  if (xaxis === 'dcp') return decompose({ ...ep, delta: xv * DEG }, E, rho, anti, beta);
+  return decompose(ep, E, rho, anti, beta);
 }
 
 // Running phasor sums at one L: [0, s1, s2, s3 = A], each a complex [re, im].
@@ -60,8 +64,15 @@ function partials(terms, L) {
 export default {
   id: 'phasors',
   label: 'Phasors',
-  note: 'Phasors = matter-eigenstate contributions to the νe appearance amplitude; overall phase removed; arm lengths |cᵢ| depend on E and ρ.',
+  note: 'Phasors = matter-eigenstate contributions to the appearance amplitude; overall phase removed; arm lengths |cᵢ| depend on E and ρ.',
   extras: [
+    {
+      key: 'channel', type: 'select', label: 'channel',
+      options: [
+        { value: 'e', label: 'νμ → νe' },
+        { value: 'tau', label: 'νμ → ντ' },
+      ],
+    },
     {
       key: 'marker', type: 'marker', label: 'animate', step: 0.002,
       select: {
@@ -98,15 +109,9 @@ export default {
     const s1Line = makeLine(N, COL[0], 0.5);
     const s2Line = makeLine(N, COL[1], 0.5);
     const ALine = makeLine(N, theme().hi, 1);
-    const floorLine = makeLine(N, theme().pCurve, 1);
-
-    // cross-section disk (complex plane) at the marker
-    const diskGeo = new THREE.CircleGeometry(1, 48);
-    diskGeo.rotateY(Math.PI / 2); // normal along +x -> disk lies in the (z, y) complex plane
-    const disk = new THREE.Mesh(diskGeo, new THREE.MeshBasicMaterial({
-      color: 0x8899bb, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false,
-    }));
-    base.scene.add(disk);
+    // floor P curve as a tube mesh (GL lines are 1px); matches the biprob rings' on-screen thickness
+    const floorTube = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: theme().pCurve }));
+    base.scene.add(floorTube);
 
     // head-to-tail phasor arrows + white resultant arrow
     const arrows = COL.map((c) => {
@@ -125,37 +130,49 @@ export default {
     // static labels
     const imLabel = textSprite('Im', 0.8); imLabel.position.set(-SX / 2 - 0.5, 2.2, 0); base.scene.add(imLabel);
     const reLabel = textSprite('Re', 0.8); reLabel.position.set(-SX / 2 - 0.5, 0.15, 2.2); base.scene.add(reLabel);
-    const pLabel = textSprite('P(νμ→νe)', 0.9); pLabel.position.set(-SX / 2 - 1.5, FLOOR_Y + 0.1, 1.2); base.scene.add(pLabel);
+    let pLabel = null, lastPLabelKey = null;
     let xLabel = null, lastLabelKey = null;
 
     let armState = null; // (frac) -> { xv, terms, pts, P }; cached by update() for tick/probe
+    let pScale = P_DEPTH; // world units per unit P, set by update() from the sweep's pmax
+    let ampScale = CHANNEL.e.ampScale; // channel-dependent |A| -> world radius, set by update()
     let last = null;     // marker snapshot for probe
 
     function update() {
       const ep = engineParams(store);
-      const { xaxis } = store.views.phasors; // NOT play/marker (tick-only, per contract)
+      const { xaxis, channel } = store.views.phasors; // NOT play/marker (tick-only, per contract)
+      const ch = CHANNEL[channel];
+      ampScale = ch.ampScale;
       const E = store.E;
       const rho = store.rho, anti = store.anti, Lfix = store.L;
       const [x0, x1] = xRange(xaxis, store.basePreset);
       const M = xaxis === 'L' ? N : NSWEEP;
-      const d0 = xaxis === 'L' ? decompose(ep, E, rho, anti) : null; // one eigH when x = L
+      const d0 = xaxis === 'L' ? decompose(ep, E, rho, anti, ch.beta) : null; // one eigH when x = L
 
       const p1 = s1Line.geometry.attributes.position;
       const p2 = s2Line.geometry.attributes.position;
       const pA = ALine.geometry.attributes.position;
-      const pF = floorLine.geometry.attributes.position;
+      const Ps = new Float32Array(M);
       for (let i = 0; i < M; i++) {
         const f = i / (M - 1);
         const xv = x0 + f * (x1 - x0);
         const x = xOfFrac(f);
-        const terms = d0 ?? decomposeAt(ep, xaxis, xv, E, rho, anti);
+        const terms = d0 ?? decomposeAt(ep, xaxis, xv, E, rho, anti, ch.beta);
         const pts = partials(terms, xaxis === 'L' ? xv : Lfix); // fixed shared L anchors the phase when x != L
-        p1.setXYZ(i, x, AMP_SCALE * pts[1][1], AMP_SCALE * pts[1][0]);
-        p2.setXYZ(i, x, AMP_SCALE * pts[2][1], AMP_SCALE * pts[2][0]);
-        pA.setXYZ(i, x, AMP_SCALE * pts[3][1], AMP_SCALE * pts[3][0]);
-        pF.setXYZ(i, x, FLOOR_Y, C.abs2(pts[3]) * P_SCALE);
+        p1.setXYZ(i, x, ampScale * pts[1][1], ampScale * pts[1][0]);
+        p2.setXYZ(i, x, ampScale * pts[2][1], ampScale * pts[2][0]);
+        pA.setXYZ(i, x, ampScale * pts[3][1], ampScale * pts[3][0]);
+        Ps[i] = C.abs2(pts[3]);
       }
-      for (const line of [s1Line, s2Line, ALine, floorLine]) {
+      // autoscale the floor curve like the 2D panel (pmax + 8% headroom fills P_DEPTH)
+      let pmax = 1e-6;
+      for (let i = 0; i < M; i++) if (Ps[i] > pmax) pmax = Ps[i];
+      pScale = P_DEPTH / (pmax * 1.08);
+      const fpts = [];
+      for (let i = 0; i < M; i++) fpts.push(new THREE.Vector3(xOfFrac(i / (M - 1)), FLOOR_Y, -Ps[i] * pScale));
+      floorTube.geometry.dispose();
+      floorTube.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(fpts), 512, 0.022, 8, false);
+      for (const line of [s1Line, s2Line, ALine]) {
         line.geometry.setDrawRange(0, M);
         line.geometry.attributes.position.needsUpdate = true;
       }
@@ -168,10 +185,17 @@ export default {
         base.scene.add(xLabel);
         lastLabelKey = key;
       }
+      if (ch.label !== lastPLabelKey) {
+        if (pLabel) base.scene.remove(pLabel);
+        pLabel = textSprite(ch.label, 0.9);
+        pLabel.position.set(-SX / 2 - 1.5, FLOOR_Y + 0.1, -1.2);
+        base.scene.add(pLabel);
+        lastPLabelKey = ch.label;
+      }
 
       armState = (frac) => {
         const xv = x0 + frac * (x1 - x0);
-        const terms = d0 ?? decomposeAt(ep, xaxis, xv, E, rho, anti);
+        const terms = d0 ?? decomposeAt(ep, xaxis, xv, E, rho, anti, ch.beta);
         const pts = partials(terms, xaxis === 'L' ? xv : Lfix);
         return { xv, terms, pts, P: C.abs2(pts[3]) };
       };
@@ -181,11 +205,7 @@ export default {
       const { xv, terms, pts, P } = armState(frac);
       const x = xOfFrac(frac);
 
-      disk.position.x = x;
-      const armSum = terms.reduce((t, z) => t + Math.sqrt(C.abs2(z.c)), 0);
-      disk.scale.setScalar(Math.max(0.3, AMP_SCALE * armSum));
-
-      const v = pts.map((p) => new THREE.Vector3(x, AMP_SCALE * p[1], AMP_SCALE * p[0]));
+      const v = pts.map((p) => new THREE.Vector3(x, ampScale * p[1], ampScale * p[0]));
       for (let i = 0; i < 3; i++) {
         const seg = v[i + 1].clone().sub(v[i]), len = seg.length();
         arrows[i].visible = len > 1e-4;
@@ -206,9 +226,9 @@ export default {
       const dp = dropLine.geometry.attributes.position;
       dp.setXYZ(0, x, 0, 0);
       dp.setXYZ(1, x, FLOOR_Y, 0);
-      dp.setXYZ(2, x, FLOOR_Y, P * P_SCALE);
+      dp.setXYZ(2, x, FLOOR_Y, -P * pScale);
       dp.needsUpdate = true;
-      floorDot.position.set(x, FLOOR_Y, P * P_SCALE);
+      floorDot.position.set(x, FLOOR_Y, -P * pScale);
 
       last = { xv, terms, P };
     }
@@ -232,7 +252,7 @@ export default {
   },
 
   companion: {
-    title: (store) => `P(νμ→νe) vs ${AXIS_LABEL[store.views.phasors.xaxis]}`,
+    title: (store) => `${CHANNEL[store.views.phasors.channel].label} vs ${AXIS_LABEL[store.views.phasors.xaxis]}`,
     markerDriven: true,
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
@@ -242,22 +262,23 @@ export default {
       ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const ep = engineParams(store);
-      const { xaxis, marker } = store.views.phasors; // marker OK here: markerDriven
+      const { xaxis, channel, marker } = store.views.phasors; // marker OK here: markerDriven
+      const ch = CHANNEL[channel];
       const E = store.E;
       const [x0, x1] = xRange(xaxis, store.basePreset);
       const NPT = 240;
-      const d0 = xaxis === 'L' ? decompose(ep, E, store.rho, store.anti) : null;
+      const d0 = xaxis === 'L' ? decompose(ep, E, store.rho, store.anti, ch.beta) : null;
       const ys = new Float32Array(NPT);
       let pmax = 1e-6;
       for (let i = 0; i < NPT; i++) {
         const xv = x0 + (x1 - x0) * i / (NPT - 1);
-        const terms = d0 ?? decomposeAt(ep, xaxis, xv, E, store.rho, store.anti);
+        const terms = d0 ?? decomposeAt(ep, xaxis, xv, E, store.rho, store.anti, ch.beta);
         const pts = partials(terms, xaxis === 'L' ? xv : store.L);
         ys[i] = C.abs2(pts[3]);
         if (ys[i] > pmax) pmax = ys[i];
       }
 
-      const P = plot2d(ctx, w, h, dpr, { x: [x0, x1], y: [0, pmax * 1.08], xTitle: AXIS_LABEL[xaxis], yTitle: 'P(νμ→νe)' });
+      const P = plot2d(ctx, w, h, dpr, { x: [x0, x1], y: [0, pmax * 1.08], xTitle: AXIS_LABEL[xaxis], yTitle: ch.label });
 
       ctx.strokeStyle = theme().pCurveCss;
       ctx.lineWidth = 1.8 * dpr;

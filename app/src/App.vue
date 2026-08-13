@@ -21,7 +21,7 @@ const vs = computed(() => store.views[store.view]); // current view's play/marke
 <template>
   <div class="app">
     <header>
-      <img class="logo" src="./assets/logo.svg" alt="nuglass" />
+      <img class="logo" src="./assets/logo.svg" alt="NuGlass" />
       <nav class="tabs" aria-label="View">
         <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id && !store.faq }"
           @click="router.push('/' + v.id)">

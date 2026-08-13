@@ -5,7 +5,7 @@ import { router } from '../router.js';
 
 const BIBTEX = `@misc{nuglass,
   author       = {Zhang, Chao},
-  title        = {nuglass: interactive 3D visualization of neutrino oscillation},
+  title        = {NuGlass: interactive 3D visualization of neutrino oscillation},
   year         = {2026},
   howpublished = {\\url{https://czczc.github.io/nuglass/}},
   note         = {Source code: \\url{https://github.com/czczc/nuglass}}
@@ -35,7 +35,7 @@ onMounted(() => {
     <article class="doc">
       <h2>FAQ</h2>
       <p class="sub">
-        nuglass is an interactive picture of neutrino oscillation — the strange way neutrinos change
+        NuGlass is an interactive picture of neutrino oscillation — the strange way neutrinos change
         from one type to another as they travel. Five 3D views, each paired with live 2D plots.
         This page explains what each view shows and how the numbers behind it are computed.
       </p>
@@ -204,7 +204,7 @@ onMounted(() => {
       <section id="faq-cite">
         <h3>How to cite</h3>
         <p>
-          If you use nuglass in a paper or talk, please cite it as:
+          If you use NuGlass in a paper or talk, please cite it as:
         </p>
         <pre class="bib">{{ BIBTEX }}</pre>
         <p><button class="linkish" @click="copyBibtex">{{ copied ? 'copied ✓' : 'copy BibTeX' }}</button></p>

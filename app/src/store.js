@@ -35,7 +35,7 @@ export const store = reactive({
     oscillogram: { axis2: 'L', anim: 'dcp', play: true, marker: 0.5 },
     tube: { mode: 'tube', play: true, marker: 0.25, Lmax: 2 * PRESETS.DUNE.L },
     sphere: { sweep: 'L', pole: 'both', play: true, marker: 0 },
-    phasors: { xaxis: 'L', play: true, marker: 0 },
+    phasors: { xaxis: 'L', channel: 'e', play: true, marker: 0 },
     biprob: { showNO: true, showIO: true, showSurf: false, anim: 'E', play: true, marker: 0.5 },
   },
 });

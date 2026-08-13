@@ -46,6 +46,10 @@ old/
 #######################################################################
 prototypes/
 
+# paper draft (local working tree, not published) #
+###################################################
+paper/
+
 # web app (node/vite) #
 #######################
 node_modules/
