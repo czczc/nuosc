@@ -1,5 +1,6 @@
 <script setup>
 import { store, applyPreset } from '../store.js';
+import { router } from '../router.js';
 
 const props = defineProps({ viewDef: { type: Object, required: true } });
 const vs = store.views[props.viewDef.id];
@@ -19,7 +20,7 @@ function lim(v) {
   <div v-if="viewDef.extras.length || viewDef.note" class="card">
     <h3>
       {{ viewDef.label }}
-      <button class="faqlink" title="About this view (FAQ)" @click="store.faq = viewDef.id">?</button>
+      <button class="faqlink" title="About this view (FAQ)" @click="router.push('/faq/' + viewDef.id)">?</button>
     </h3>
     <template v-for="e in viewDef.extras" :key="e.key">
       <div v-if="e.type === 'select'" class="ctl-row">

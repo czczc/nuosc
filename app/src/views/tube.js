@@ -32,7 +32,7 @@ function fillRingAngles(out, cumE, cumMu, cumTau) {
 
 export default {
   id: 'tube',
-  label: 'Flavor tube',
+  label: 'Flavortube',
   extras: [
     {
       key: 'mode', type: 'select', label: 'display',

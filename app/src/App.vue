@@ -1,5 +1,7 @@
 <script setup>
+import { computed } from 'vue';
 import { store, applyPreset, setTheme } from './store.js';
+import { router } from './router.js';
 import { PRESETS } from './engines/constants.js';
 import { PALETTES } from './three/SceneBase.js';
 import { VIEWS, VIEW_MAP } from './views/index.js';
@@ -13,6 +15,7 @@ const presetNames = Object.keys(PRESETS);
 const PALETTE_NAMES = Object.keys(PALETTES);
 
 const companions = (v) => [v.companion, v.companion2].filter(Boolean);
+const vs = computed(() => store.views[store.view]); // current view's play/marker state
 </script>
 
 <template>
@@ -21,18 +24,27 @@ const companions = (v) => [v.companion, v.companion2].filter(Boolean);
       <img class="logo" src="./assets/logo.svg" alt="nuglass" />
       <nav class="tabs" aria-label="View">
         <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id && !store.faq }"
-          @click="store.view = v.id; store.faq = null">
+          @click="router.push('/' + v.id)">
           {{ v.label }}
         </button>
       </nav>
       <div class="right">
+        <div v-if="!store.faq" class="group" role="group" aria-label="Animation">
+          <button class="navbtn play" :title="vs.play ? 'pause' : 'play'" @click="vs.play = !vs.play">
+            {{ vs.play ? '❚❚' : '▶' }}
+          </button>
+          <button class="navbtn" title="reset to experiment defaults" @click="applyPreset(store.basePreset)">
+            ↺
+          </button>
+        </div>
         <div class="group" role="group" aria-label="Experiment">
           <span v-for="p in presetNames" :key="p" class="chip" :class="{ on: store.preset === p }" role="button"
             tabindex="0" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">{{ p }}</span>
           <span class="chip" :class="{ on: store.preset === 'custom' }">custom</span>
         </div>
         <div class="group" role="group" aria-label="Display">
-          <button class="faqbtn" :class="{ on: !!store.faq }" @click="store.faq = store.faq ? null : 'engines'">
+          <button class="faqbtn" :class="{ on: !!store.faq }"
+            @click="router.push(store.faq ? '/' + store.view : '/faq')">
             FAQ
           </button>
           <select v-model="store.palette" class="palette" aria-label="Color palette" title="color palette">
@@ -91,6 +103,15 @@ header {
 }
 .group .chip { border-color: transparent; background: transparent; }
 .group .chip.on { background: var(--accent); border-color: var(--accent); }
+.navbtn {
+  width: 26px; height: 24px;
+  border: none; border-radius: 999px;
+  background: none; color: var(--accent);
+  font-size: 15px; line-height: 1;
+  padding: 0; cursor: pointer;
+}
+.navbtn.play { font-size: 10px; }
+.navbtn:hover { background: var(--surface-2); }
 .faqbtn {
   font-family: var(--font-mono);
   font-size: 11.5px;
@@ -143,5 +164,17 @@ aside {
 @media (max-width: 900px) {
   main { flex-direction: column; overflow-y: auto; }
   aside { width: 100%; border-left: none; border-top: 1px solid var(--border); }
+  header { height: auto; flex-wrap: wrap; gap: 6px 10px; padding: 6px 10px; }
+  .logo { height: 30px; }
+  .tabs {
+    order: 3;
+    flex: 1 1 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { padding: 4px 8px 5px; font-size: 13px; white-space: nowrap; }
+  .right { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  .group .chip { padding: 3px 7px; }
 }
 </style>

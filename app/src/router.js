@@ -1,0 +1,30 @@
+// Hash-based routes (GitHub Pages friendly): #/<view> for the 5 views,
+// #/faq/<section?> for the FAQ page. The URL is the source of truth for
+// view/faq navigation — a guard syncs it into the reactive store, which the
+// components keep reading as before.
+import { createRouter, createWebHashHistory } from 'vue-router';
+import { store } from './store.js';
+import { VIEW_MAP } from './views/index.js';
+
+const VIEW_IDS = Object.keys(VIEW_MAP).join('|');
+// App.vue renders from the store (no <router-view>); routes carry a null component
+const none = { render: () => null };
+
+export const router = createRouter({
+  history: createWebHashHistory(),
+  routes: [
+    { path: '/', redirect: `/${store.view}` },
+    { path: '/faq/:section?', name: 'faq', component: none },
+    { path: `/:view(${VIEW_IDS})`, name: 'view', component: none },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
+  ],
+});
+
+router.beforeEach((to) => {
+  if (to.name === 'faq') {
+    store.faq = to.params.section || 'engines';
+  } else if (to.name === 'view') {
+    store.view = to.params.view;
+    store.faq = null;
+  }
+});

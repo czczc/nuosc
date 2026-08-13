@@ -44,7 +44,7 @@ function bloch(eig, L) {
 
 export default {
   id: 'sphere',
-  label: 'State sphere',
+  label: 'Statesphere',
   note: 'νe–νμ subspace projection of the 3-flavor state (8-D full space). Vector length < 1 = leakage into ντ; a pure 2-flavor oscillation would trace a surface circle.',
   extras: [
     {

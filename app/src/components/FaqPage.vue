@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import { store } from '../store.js';
+import { router } from '../router.js';
 
 const BIBTEX = `@misc{nuglass,
   author       = {Zhang, Chao},
@@ -19,8 +20,7 @@ function copyBibtex() {
 }
 
 function openView(id) {
-  store.view = id;
-  store.faq = null;
+  router.push('/' + id);
 }
 
 onMounted(() => {
@@ -125,7 +125,7 @@ onMounted(() => {
       </section>
 
       <section id="faq-sphere">
-        <h3>State sphere</h3>
+        <h3>Statesphere</h3>
         <p>
           The neutrino’s quantum state drawn as an arrow inside a globe. The north pole means “certainly
           an electron neutrino”, the south pole “certainly a muon neutrino”, and everywhere in between
@@ -160,7 +160,7 @@ onMounted(() => {
       </section>
 
       <section id="faq-tube">
-        <h3>Flavor tube</h3>
+        <h3>Flavortube</h3>
         <p>
           Follow a muon neutrino down the beamline and watch its identity mix. Each slice of the tube is
           a pie chart of the three possibilities at that distance: still a muon neutrino (blue), turned
