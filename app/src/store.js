@@ -33,7 +33,7 @@ export const store = reactive({
   // per-view state (marker is a 0..1 fraction of the swept range)
   views: {
     oscillogram: { axis2: 'L', anim: 'dcp', play: true, marker: 0.5 },
-    tube: { mode: 'tube', play: true, marker: 0.25, Lmax: 2 * PRESETS.DUNE.L },
+    tube: { mode: 'tube', anim: 'L', play: true, marker: 0.25 },
     sphere: { sweep: 'L', pole: 'both', play: true, marker: 0 },
     phasors: { xaxis: 'L', channel: 'e', play: true, marker: 0 },
     biprob: { showNO: true, showIO: true, showSurf: false, anim: 'E', play: true, marker: 0.5 },
@@ -50,8 +50,6 @@ export function applyPreset(name) {
   // snap the shared energy to the experiment's beam peak
   store.E = p.Epeak;
   store.dcp = DEFAULTS.dcp;
-  // snap the L sweep to the experiment's span (0 - 2L)
-  store.views.tube.Lmax = 2 * p.L;
 }
 
 export function setTheme(t) {

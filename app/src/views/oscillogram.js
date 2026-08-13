@@ -177,7 +177,11 @@ export default {
     function probe(event) {
       if (!lastHeld) return null;
       const hit = base.raycast(event, surface);
-      if (!hit) return null;
+      if (!hit) {
+        // no hover -> live status at the shared sliders (updates as the animation drives them)
+        const p = pMuE(lastHeld.ep, store.E, store.L, store.rho, store.dcp, lastHeld.anti);
+        return `E ${store.E.toFixed(2)} GeV · L ${store.L.toFixed(0)} km · δCP ${store.dcp.toFixed(0)}° · P ${p.toFixed(4)}`;
+      }
       const E = lastHeld.E_MIN + (hit.point.x / SX + 0.5) * (lastHeld.E_MAX - lastHeld.E_MIN);
       const v = lastHeld.a2min + (0.5 - hit.point.z / SZ) * (lastHeld.a2max - lastHeld.a2min);
       const held = { dcp: lastHeld.dcp, L: lastHeld.L, rho: lastHeld.rho };

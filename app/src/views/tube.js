@@ -6,12 +6,19 @@
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { hamiltonian, eigH, prob } from '../engines/jacobi.js';
-import { engineParams, lRangeOf } from '../engines/constants.js';
+import { engineParams, lRangeOf, eRangeOf } from '../engines/constants.js';
 import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
-// world extents: x = L over [-SX/2, SX/2], y = stacked flavor fraction (P=1 -> SY), z = extrusion
-const SX = 10, SY = 2.5, HD = 0.15; // HD = half depth of the band extrusion
+// world extents: y = stacked flavor fraction (P=1 -> SY); tube mode runs x = L over
+// [-SX/2, SX/2] and slides along z = E (toward -z, biprob convention); bands mode
+// (the "cube") matches the oscillogram's axes instead: x = E over the beam window,
+// z = L toward -z over [DE/2, -DE/2], with the stacked slice plane sliding along x
+const SX = 10, SY = 2.5;
+const DE = 6;
+const xOfE = (E, E0, E1) => -SX / 2 + ((E - E0) / (E1 - E0)) * SX;
+const zOfE = (E, E0, E1) => DE / 2 - ((E - E0) / (E1 - E0)) * DE;
+const zOfL = (L, Lmax) => DE / 2 - (L / Lmax) * DE;
 const NS = 512;                     // length samples
 const ASEG = 96, SPS = ASEG / 3, TAU = 2 * Math.PI; // angular segments; SPS per sector
 const TUBE_R = 1.1, TUBE_CY = SY / 2;
@@ -41,8 +48,17 @@ export default {
         { value: 'bands', label: 'stacked bands' },
       ],
     },
-    { key: 'Lmax', type: 'range', label: 'L max [km]', min: 100, max: (s) => lRangeOf(s.basePreset)[1], step: 5 },
-    { key: 'marker', type: 'marker', label: 'animate', step: 0.002 },
+    {
+      key: 'marker', type: 'marker', label: 'animate', step: 0.002,
+      select: {
+        key: 'anim',
+        options: [
+          { value: 'L', label: 'L' },
+          { value: 'E', label: 'E' },
+          { value: 'dcp', label: 'δCP' },
+        ],
+      },
+    },
   ],
 
   create(container, store) {
@@ -53,50 +69,37 @@ export default {
     base.scene.add(grid);
 
     let xLabel = null, labeledLmax = null;
+    let eLabel = null, labeledE = null;
     const yLabel = textSprite('flavor fraction');
-    yLabel.position.set(-SX / 2 - 1.4, SY / 2, 0);
+    yLabel.position.set(-SX / 2 - 1.4, SY / 2, -DE / 2 - 0.4); // back-left: clear of the L label in the top view
     base.scene.add(yLabel);
 
-    // ---------- stacked band meshes ----------
-    // Each band = front face + back face + top strip (disjoint vertex groups: front 2*NS,
-    // back 2*NS, top 2*NS). Per sample i: bottom vertex 2i, top vertex 2i+1 (front & back);
-    // top strip: back edge 2i, front edge 2i+1.
+    // ---------- slice bands: zero-thickness translucent stacked plane at the shared E ----------
+    // Per L sample i: bottom vertex 2i, top vertex 2i+1, in the local x = 0 plane; the
+    // meshes slide along x to the cube's position for the shared E.
     const bands = [];
     for (const hex of FLAVOR_HEX) {
       const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6 * NS * 3), 3));
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(2 * NS * 3), 3));
       const idx = [];
-      const quad = (a, b, c, d) => idx.push(a, b, d, b, c, d);
-      const OB = 2 * NS, OT = 4 * NS;
-      for (let i = 0; i < NS - 1; i++) {
-        quad(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1);                     // front (+z out)
-        quad(OB + 2 * i + 1, OB + 2 * i + 3, OB + 2 * i + 2, OB + 2 * i); // back (-z out)
-        quad(OT + 2 * i, OT + 2 * i + 2, OT + 2 * i + 3, OT + 2 * i + 1); // top (+y out)
-      }
+      for (let i = 0; i < NS - 1; i++) idx.push(2 * i, 2 * i + 2, 2 * i + 3, 2 * i, 2 * i + 3, 2 * i + 1);
       geo.setIndex(idx);
-      const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: new THREE.Color(hex), side: THREE.DoubleSide }));
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+        color: new THREE.Color(hex), transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false,
+      }));
       base.scene.add(mesh);
       bands.push(mesh);
     }
 
     function setBand(geo, cum0, cum1) {
       const p = geo.attributes.position.array;
-      const OB = 2 * NS * 3, OT = 4 * NS * 3;
       for (let i = 0; i < NS; i++) {
-        const x = -SX / 2 + (i / (NS - 1)) * SX;
-        const y0 = cum0[i] * SY, y1 = cum1[i] * SY;
-        let o = 6 * i;                                     // front: bottom, top
-        p[o] = x; p[o + 1] = y0; p[o + 2] = HD;
-        p[o + 3] = x; p[o + 4] = y1; p[o + 5] = HD;
-        o = OB + 6 * i;                                    // back: bottom, top
-        p[o] = x; p[o + 1] = y0; p[o + 2] = -HD;
-        p[o + 3] = x; p[o + 4] = y1; p[o + 5] = -HD;
-        o = OT + 6 * i;                                    // top strip: back, front
-        p[o] = x; p[o + 1] = y1; p[o + 2] = -HD;
-        p[o + 3] = x; p[o + 4] = y1; p[o + 5] = HD;
+        const z = DE / 2 - (i / (NS - 1)) * DE; // L toward -z
+        const o = 6 * i; // bottom, top
+        p[o] = 0; p[o + 1] = cum0[i] * SY; p[o + 2] = z;
+        p[o + 3] = 0; p[o + 4] = cum1[i] * SY; p[o + 5] = z;
       }
       geo.attributes.position.needsUpdate = true;
-      geo.computeVertexNormals();
       geo.computeBoundingSphere();
     }
 
@@ -177,14 +180,41 @@ export default {
     const markerLine = new THREE.Line(markerLineGeo, new THREE.LineBasicMaterial({ color: theme().hi }));
     base.scene.add(markerLine);
 
+    // ---------- bands-mode "cube": flavor boundary surfaces over the full (L, E) window ----------
+    // red surface = top of the nue share, blue = top of the numu share; the gap from the blue
+    // surface up to the box top (fraction 1, unitarity) is the nutau share.
+    const NL = 128, NE = 48;
+    function mkSurf(hex) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NL * NE * 3), 3));
+      const idx = [];
+      for (let i = 0; i < NE - 1; i++) for (let j = 0; j < NL - 1; j++) {
+        const a = i * NL + j, b = a + 1, c = a + NL, d = c + 1;
+        idx.push(a, b, c, b, d, c);
+      }
+      geo.setIndex(idx);
+      const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
+        color: new THREE.Color(hex), transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false,
+      }));
+      base.scene.add(mesh);
+      return mesh;
+    }
+    const surfE = mkSurf(FLAVOR_HEX[0]);
+    const surfMu = mkSurf(FLAVOR_HEX[1]);
+    const boxEdges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(SX, SY, DE)),
+      new THREE.LineBasicMaterial({ color: theme().grid1 }));
+    boxEdges.position.y = SY / 2;
+    base.scene.add(boxEdges);
+    let lastSurfKey = null;
+
     let eig = null, lastLmax = 5000;
     const Pe = new Float64Array(NS), cumMu = new Float64Array(NS), cumTau = new Float64Array(NS);
     const zero = new Float64Array(NS);
 
     function update() {
-      const st = store.views.tube; // reads mode/Lmax only — never play/marker (tick-only)
+      const st = store.views.tube; // reads mode only — never play/marker (tick-only)
       const ep = engineParams(store);
-      lastLmax = st.Lmax;
+      lastLmax = lRangeOf(store.basePreset)[1]; // tube always spans the experiment's 0 - 2L
       eig = eigH(hamiltonian(ep, store.E, store.rho, store.anti));
       for (let i = 0; i < NS; i++) {
         const L = (i / (NS - 1)) * lastLmax;
@@ -193,61 +223,141 @@ export default {
         const pt = prob(eig, 1, 2, L);
         Pe[i] = pe; cumMu[i] = pe + pm; cumTau[i] = pe + pm + pt; // top edge = unitarity check
       }
-      setBand(bands[0].geometry, zero, Pe);
-      setBand(bands[1].geometry, Pe, cumMu);
-      setBand(bands[2].geometry, cumMu, cumTau);
-      setTube(Pe, cumMu, cumTau);
+      const tube = st.mode === 'tube';
+      if (tube) {
+        setTube(Pe, cumMu, cumTau);
+        // the tube rides the E axis: it slides toward -z as the shared E grows
+        const [E0, E1] = eRangeOf(store.basePreset);
+        tubeMesh.position.z = zOfE(store.E, E0, E1);
+        diskMesh.position.z = tubeMesh.position.z;
+      } else {
+        // slice slab at the shared E, parked on the cube's E axis
+        setBand(bands[0].geometry, zero, Pe);
+        setBand(bands[1].geometry, Pe, cumMu);
+        setBand(bands[2].geometry, cumMu, cumTau);
+        const [E0, E1] = eRangeOf(store.basePreset);
+        for (const m of bands) m.position.set(xOfE(store.E, E0, E1), 0, 0);
+
+        // boundary surfaces over the full (L, E) window; independent of store.E, so
+        // memoized — an E animation only moves the slice through a fixed cube
+        const surfKey = JSON.stringify([ep, store.rho, store.anti, lastLmax, E0, E1]);
+        if (surfKey !== lastSurfKey) {
+          const pE = surfE.geometry.attributes.position;
+          const pM = surfMu.geometry.attributes.position;
+          for (let i = 0; i < NE; i++) {
+            const Ei = E0 + (i / (NE - 1)) * (E1 - E0);
+            const x = xOfE(Ei, E0, E1);
+            const eg = eigH(hamiltonian(ep, Ei, store.rho, store.anti));
+            for (let j = 0; j < NL; j++) {
+              const L = (j / (NL - 1)) * lastLmax;
+              const z = zOfL(L, lastLmax);
+              const pe = prob(eg, 1, 0, L), pm = prob(eg, 1, 1, L);
+              pE.setXYZ(i * NL + j, x, pe * SY, z);
+              pM.setXYZ(i * NL + j, x, (pe + pm) * SY, z);
+            }
+          }
+          for (const s of [surfE, surfMu]) {
+            s.geometry.attributes.position.needsUpdate = true;
+            s.geometry.computeVertexNormals();
+            s.geometry.computeBoundingSphere();
+          }
+          lastSurfKey = surfKey;
+        }
+      }
 
       if (lastLmax !== labeledLmax) {
         if (xLabel) base.scene.remove(xLabel);
         xLabel = textSprite(`L [km]  (0 - ${lastLmax})`);
-        xLabel.position.set(0, -0.4, HD + 1.2);
         base.scene.add(xLabel);
         labeledLmax = lastLmax;
       }
+      // axis labels: tube mode has L along x (front) and E along z (left);
+      // bands mode follows the oscillogram's layout — E along x (front), L along z (left)
+      if (tube) xLabel.position.set(0, -0.4, DE / 2 + 1.2);
+      else xLabel.position.set(-SX / 2 - 1.6, -0.4, 0);
+      const eKey = `E [GeV]  (${eRangeOf(store.basePreset).join(' - ')})`;
+      if (eKey !== labeledE) {
+        if (eLabel) base.scene.remove(eLabel);
+        eLabel = textSprite(eKey);
+        base.scene.add(eLabel);
+        labeledE = eKey;
+      }
+      if (tube) eLabel.position.set(-SX / 2 - 1.6, -0.4, 0);
+      else eLabel.position.set(0, -0.4, DE / 2 + 1.0);
 
-      const tube = st.mode === 'tube';
       tubeMesh.visible = tube;
       diskMesh.visible = tube;
       for (const m of bands) m.visible = !tube;
       markerSphere.visible = !tube;
       markerLine.visible = !tube;
+      surfE.visible = surfMu.visible = boxEdges.visible = !tube;
       yLabel.visible = !tube; // the "flavor fraction" y axis only applies to the stacked bands
     }
 
+    let lastMarker = null, lastML = 0;
     function tick(dt) {
       const st = store.views.tube;
-      if (st.play) st.marker = (st.marker + dt / 10) % 1; // ~10 s per traversal
+      if (st.play) st.marker = (st.marker + dt / 10) % 1; // ~10 s per sweep
       if (!eig) return;
-      const L = st.marker * st.Lmax;
+      let frac = st.marker; // anim = L: the marker rides the tube
+      if (st.anim !== 'L') {
+        // anim = E / δCP: the marker drives the shared slider (tube morphs) and the
+        // disk parks at the experiment baseline, showing the composition at the detector
+        if (st.marker !== lastMarker) {
+          if (st.anim === 'E') {
+            const [v0, v1] = eRangeOf(store.basePreset);
+            store.E = Math.round((v0 + st.marker * (v1 - v0)) * 100) / 100;
+          } else {
+            store.dcp = Math.round(st.marker * 360);
+          }
+        }
+        frac = Math.max(0, Math.min(1, store.L / lastLmax));
+      }
+      lastMarker = st.marker;
+      const L = frac * lastLmax;
       const pe = prob(eig, 1, 0, L), pm = prob(eig, 1, 1, L), pt = prob(eig, 1, 2, L);
       const sum = pe + pm + pt;
-      const x = -SX / 2 + st.marker * SX;
-      diskMesh.position.x = x;
+      lastML = L; // marker L for the no-hover status chip
+      diskMesh.position.x = -SX / 2 + frac * SX; // tube-mode marker: L along x
       setDisk(pe, pm, pt);
-      markerSphere.position.set(x, sum * SY + 0.06, 0);
+      const [E0, E1] = eRangeOf(store.basePreset);
+      const slabX = xOfE(store.E, E0, E1); // bands-mode marker rides the slice plane, L along z
+      const zM = zOfL(frac * lastLmax, lastLmax);
+      markerSphere.position.set(slabX, sum * SY + 0.06, zM);
       const lp = markerLineGeo.attributes.position.array;
-      lp[0] = x; lp[1] = 0; lp[2] = HD + 0.01;
-      lp[3] = x; lp[4] = sum * SY; lp[5] = HD + 0.01;
+      lp[0] = slabX + 0.02; lp[1] = 0; lp[2] = zM;
+      lp[3] = slabX + 0.02; lp[4] = sum * SY; lp[5] = zM;
       markerLineGeo.attributes.position.needsUpdate = true;
       markerLineGeo.computeBoundingSphere();
     }
 
     function probe(event) {
       if (!eig) return null;
+      const tube = store.views.tube.mode === 'tube';
       let hit = null;
-      if (store.views.tube.mode === 'tube') {
+      if (tube) {
         hit = base.raycast(event, tubeMesh);
       } else {
-        for (const m of bands) {
+        for (const m of [...bands, surfE, surfMu]) {
           const h = base.raycast(event, m);
           if (h && (!hit || h.distance < hit.distance)) hit = h;
         }
       }
-      if (!hit) return null;
-      const L = Math.max(0, Math.min(1, hit.point.x / SX + 0.5)) * lastLmax;
-      const pe = prob(eig, 1, 0, L), pm = prob(eig, 1, 1, L), pt = prob(eig, 1, 2, L);
-      return `L ${L.toFixed(0)} km · Pe ${pe.toFixed(4)} Pμ ${pm.toFixed(4)} Pτ ${pt.toFixed(4)}`;
+      // no hover -> live status at the animation marker (the chip re-polls while playing)
+      let L = lastML, Eh = store.E, eg = eig;
+      if (hit && tube) {
+        L = Math.max(0, Math.min(1, hit.point.x / SX + 0.5)) * lastLmax;
+      } else if (hit) {
+        L = Math.max(0, Math.min(1, 0.5 - hit.point.z / DE)) * lastLmax;
+        // slab hit -> the shared E; surface hit -> decode E from the hit's x
+        if (!bands.includes(hit.object)) {
+          const [E0, E1] = eRangeOf(store.basePreset);
+          Eh = Math.max(E0, Math.min(E1, E0 + (hit.point.x / SX + 0.5) * (E1 - E0)));
+          eg = eigH(hamiltonian(engineParams(store), Eh, store.rho, store.anti));
+        }
+      }
+      const pe = prob(eg, 1, 0, L), pm = prob(eg, 1, 1, L), pt = prob(eg, 1, 2, L);
+      return `L ${L.toFixed(0)} km · E ${Eh.toFixed(2)} GeV · Pe ${pe.toFixed(4)} Pμ ${pm.toFixed(4)} Pτ ${pt.toFixed(4)}`;
     }
 
     return { base, update, tick, probe, dispose: () => base.dispose() };
@@ -265,17 +375,18 @@ export default {
 
       const st = store.views.tube;
       const ep = engineParams(store);
+      const Lmax = lRangeOf(store.basePreset)[1];
       const eig = eigH(hamiltonian(ep, store.E, store.rho, store.anti));
       const NPT = 240;
       const cums = [new Float64Array(NPT), new Float64Array(NPT), new Float64Array(NPT)];
       for (let i = 0; i < NPT; i++) {
-        const L = (i / (NPT - 1)) * st.Lmax;
+        const L = (i / (NPT - 1)) * Lmax;
         const pe = prob(eig, 1, 0, L), pm = prob(eig, 1, 1, L), pt = prob(eig, 1, 2, L);
         cums[0][i] = pe; cums[1][i] = pe + pm; cums[2][i] = pe + pm + pt;
       }
 
-      const P = plot2d(ctx, w, h, dpr, { x: [0, st.Lmax], y: [0, 1], xTitle: 'L [km]', yTitle: 'P(νμ→να)' });
-      const xOf = (i) => P.X((i / (NPT - 1)) * st.Lmax);
+      const P = plot2d(ctx, w, h, dpr, { x: [0, Lmax], y: [0, 1], xTitle: 'L [km]', yTitle: 'P(νμ→να)' });
+      const xOf = (i) => P.X((i / (NPT - 1)) * Lmax);
       for (let k = 0; k < 3; k++) {
         const lo = k === 0 ? null : cums[k - 1], hi = cums[k];
         ctx.fillStyle = FLAVOR_HEX[k];
@@ -290,8 +401,9 @@ export default {
       }
       P.frame(); // the stacked fills cover the frame edges
 
-      // white vertical marker line at the marker fraction (allowed: markerDriven)
-      const mx = P.X(st.marker * st.Lmax);
+      // white vertical marker line (allowed: markerDriven); tracks the 3D disk:
+      // the marker fraction in L mode, the experiment baseline in E/δCP mode
+      const mx = P.X(st.anim === 'L' ? st.marker * Lmax : Math.min(store.L, Lmax));
       ctx.strokeStyle = theme().hiCss;
       ctx.lineWidth = dpr;
       ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
@@ -301,6 +413,51 @@ export default {
         { label: 'νμ', color: FLAVOR_HEX[1] },
         { label: 'ντ', color: FLAVOR_HEX[2] },
       ]);
+    },
+  },
+
+  companion2: {
+    title: (store) => `Flavor fractions vs E at L = ${store.L} km`,
+    markerDriven: true, // repainted per frame so the white line can track an E animation
+    draw(canvas, store) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
+
+      const ep = engineParams(store);
+      const [E0, E1] = eRangeOf(store.basePreset);
+      const NPT = 160; // one eigH per point
+      const cums = [new Float64Array(NPT), new Float64Array(NPT), new Float64Array(NPT)];
+      for (let i = 0; i < NPT; i++) {
+        const E = E0 + (i / (NPT - 1)) * (E1 - E0);
+        const eig = eigH(hamiltonian(ep, E, store.rho, store.anti));
+        const pe = prob(eig, 1, 0, store.L), pm = prob(eig, 1, 1, store.L), pt = prob(eig, 1, 2, store.L);
+        cums[0][i] = pe; cums[1][i] = pe + pm; cums[2][i] = pe + pm + pt;
+      }
+
+      const P = plot2d(ctx, w, h, dpr, { x: [E0, E1], y: [0, 1], xTitle: 'E [GeV]', yTitle: 'P(νμ→να)' });
+      const xOf = (i) => P.X(E0 + (i / (NPT - 1)) * (E1 - E0));
+      for (let k = 0; k < 3; k++) {
+        const lo = k === 0 ? null : cums[k - 1], hi = cums[k];
+        ctx.fillStyle = FLAVOR_HEX[k];
+        ctx.beginPath();
+        for (let i = 0; i < NPT; i++) {
+          const y = P.Y(hi[i]);
+          if (i === 0) ctx.moveTo(xOf(0), y); else ctx.lineTo(xOf(i), y);
+        }
+        for (let i = NPT - 1; i >= 0; i--) ctx.lineTo(xOf(i), P.Y(lo ? lo[i] : 0));
+        ctx.closePath();
+        ctx.fill();
+      }
+      P.frame(); // the stacked fills cover the frame edges
+
+      // white vertical marker line at the shared E (the tube/slice position)
+      const mx = P.X(Math.max(E0, Math.min(E1, store.E)));
+      ctx.strokeStyle = theme().hiCss;
+      ctx.lineWidth = dpr;
+      ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
     },
   },
 };
