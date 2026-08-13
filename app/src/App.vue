@@ -25,20 +25,24 @@ const companions = (v) => [v.companion, v.companion2].filter(Boolean);
           {{ v.label }}
         </button>
       </nav>
-      <button class="faqbtn" :class="{ on: !!store.faq }" @click="store.faq = store.faq ? null : 'engines'">
-        FAQ
-      </button>
       <div class="right">
-        <span v-for="p in presetNames" :key="p" class="chip" :class="{ on: store.preset === p }" role="button"
-          tabindex="0" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">{{ p }}</span>
-        <span class="chip" :class="{ on: store.preset === 'custom' }">custom</span>
-        <select v-model="store.palette" class="palette" aria-label="Color palette" title="color palette">
-          <option v-for="p in PALETTE_NAMES" :key="p" :value="p">{{ p }}</option>
-        </select>
-        <button class="themebtn" :title="store.theme === 'dark' ? 'switch to light mode' : 'switch to dark mode'"
-          @click="setTheme(store.theme === 'dark' ? 'light' : 'dark')">
-          {{ store.theme === 'dark' ? '☀' : '☾' }}
-        </button>
+        <div class="group" role="group" aria-label="Experiment">
+          <span v-for="p in presetNames" :key="p" class="chip" :class="{ on: store.preset === p }" role="button"
+            tabindex="0" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">{{ p }}</span>
+          <span class="chip" :class="{ on: store.preset === 'custom' }">custom</span>
+        </div>
+        <div class="group" role="group" aria-label="Display">
+          <button class="faqbtn" :class="{ on: !!store.faq }" @click="store.faq = store.faq ? null : 'engines'">
+            FAQ
+          </button>
+          <select v-model="store.palette" class="palette" aria-label="Color palette" title="color palette">
+            <option v-for="p in PALETTE_NAMES" :key="p" :value="p">{{ p }}</option>
+          </select>
+          <button class="themebtn" :title="store.theme === 'dark' ? 'switch to light mode' : 'switch to dark mode'"
+            @click="setTheme(store.theme === 'dark' ? 'light' : 'dark')">
+            {{ store.theme === 'dark' ? '☀' : '☾' }}
+          </button>
+        </div>
       </div>
     </header>
 
@@ -78,32 +82,41 @@ header {
   cursor: pointer;
 }
 .tabs button:hover { color: var(--text); }
+.group {
+  display: flex; align-items: center; gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.group .chip { border-color: transparent; background: transparent; }
+.group .chip.on { background: var(--accent); border-color: var(--accent); }
 .faqbtn {
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--muted);
   background: none;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 999px;
   padding: 3px 12px;
   cursor: pointer;
 }
 .faqbtn:hover { color: var(--text); }
-.faqbtn.on { color: var(--accent); border-color: var(--accent); }
+.faqbtn.on { color: var(--accent-ink); background: var(--accent); font-weight: 700; }
 .themebtn {
-  width: 26px; height: 26px;
-  border: 1px solid var(--border); border-radius: 50%;
+  width: 28px; height: 28px;
+  border: none; border-radius: 50%;
   background: none; color: var(--muted);
-  font-size: 13px; line-height: 1;
+  font-size: 17px; line-height: 1;
   padding: 0; cursor: pointer;
 }
-.themebtn:hover { color: var(--accent); border-color: var(--accent); }
+.themebtn:hover { color: var(--accent); }
 .palette {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--muted);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: none;
   border-radius: 999px;
   padding: 3px 8px;
   cursor: pointer;
