@@ -18,10 +18,10 @@ const LOOP_S = 10;                       // ~10 s per sweep of the marker
 
 function xOfFrac(f) { return -SX / 2 + SX * f; }
 
-function xRange(xaxis, Lmax, preset) {
+function xRange(xaxis, preset) {
   if (xaxis === 'E') return eRangeOf(preset);
   if (xaxis === 'dcp') return [0, 360];
-  return [0, Lmax];
+  return lRangeOf(preset);
 }
 
 function fmtVal(xaxis, xv) {
@@ -63,15 +63,16 @@ export default {
   note: 'Phasors = matter-eigenstate contributions to the νe appearance amplitude; overall phase removed; arm lengths |cᵢ| depend on E and ρ.',
   extras: [
     {
-      key: 'xaxis', type: 'select', label: 'x axis',
-      options: [
-        { value: 'L', label: 'x = L' },
-        { value: 'E', label: 'x = E (spectrum)' },
-        { value: 'dcp', label: 'x = δCP' },
-      ],
+      key: 'marker', type: 'marker', label: 'animate', step: 0.002,
+      select: {
+        key: 'xaxis',
+        options: [
+          { value: 'L', label: 'L' },
+          { value: 'E', label: 'E' },
+          { value: 'dcp', label: 'δCP' },
+        ],
+      },
     },
-    { key: 'Lmax', type: 'range', label: 'L max [km]', min: 100, max: (s) => lRangeOf(s.basePreset)[1], step: 5 },
-    { key: 'marker', type: 'marker', label: 'animate', step: 0.002 },
   ],
 
   create(container, store) {
@@ -132,10 +133,10 @@ export default {
 
     function update() {
       const ep = engineParams(store);
-      const { xaxis, Lmax } = store.views.phasors; // NOT play/marker (tick-only, per contract)
+      const { xaxis } = store.views.phasors; // NOT play/marker (tick-only, per contract)
       const E = store.E;
       const rho = store.rho, anti = store.anti, Lfix = store.L;
-      const [x0, x1] = xRange(xaxis, Lmax, store.basePreset);
+      const [x0, x1] = xRange(xaxis, store.basePreset);
       const M = xaxis === 'L' ? N : NSWEEP;
       const d0 = xaxis === 'L' ? decompose(ep, E, rho, anti) : null; // one eigH when x = L
 
@@ -241,9 +242,9 @@ export default {
       ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const ep = engineParams(store);
-      const { xaxis, Lmax, marker } = store.views.phasors; // marker OK here: markerDriven
+      const { xaxis, marker } = store.views.phasors; // marker OK here: markerDriven
       const E = store.E;
-      const [x0, x1] = xRange(xaxis, Lmax, store.basePreset);
+      const [x0, x1] = xRange(xaxis, store.basePreset);
       const NPT = 240;
       const d0 = xaxis === 'L' ? decompose(ep, E, store.rho, store.anti) : null;
       const ys = new Float32Array(NPT);

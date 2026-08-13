@@ -138,6 +138,30 @@ onMounted(() => {
           into the third type, the tau neutrino, which this picture cannot show directly. The 2D panel
           plots all three probabilities along the sweep, with its marker synced to the 3D arrow.
         </p>
+        <p>
+          Why does the arrow stay mostly in the bottom half? Its height is the <em>difference</em>
+          between “how electron” and “how muon” the neutrino currently is, so the bottom half simply
+          means the muon side is still winning. The chance of turning into an electron neutrino never
+          grows beyond a few percent, so the arrow can never climb far toward the north pole. And most
+          of what the muon neutrino loses goes to the tau neutrino instead — which in this picture does
+          not lift the arrow up but pulls it inward, toward the center. You can watch that hand-off in
+          the 2D panel: the green (tau) curve absorbs almost everything the blue (muon) curve loses,
+          while the red (electron) curve stays a thin ripple at the bottom.
+        </p>
+        <p>
+          For readers who want the exact construction: this globe is the
+          <a href="https://en.wikipedia.org/wiki/Bloch_sphere" target="_blank" rel="noopener">Bloch
+          sphere</a> of quantum information theory, applied to the two flavors on the poles. Writing
+          a<sub>e</sub> and a<sub>μ</sub> for the quantum amplitudes of the traveling state (from the
+          exact engine, starting as a pure νμ), the arrow is
+          <span class="k">b = ( 2&hairsp;Re(a<sub>e</sub>a<sub>μ</sub>*), 2&hairsp;Im(a<sub>e</sub>a<sub>μ</sub>*), |a<sub>e</sub>|² − |a<sub>μ</sub>|² )</span>,
+          drawn with the last component vertical. The height is the probability difference
+          P<sub>e</sub> − P<sub>μ</sub>; the two horizontal components are the real and imaginary parts
+          of the interference term (the “coherence”) between the flavors — the quantum-phase
+          information that probabilities alone don’t carry. |b| = 1 for a pure two-flavor state;
+          anything shorter means probability sits in the third flavor. For the ντ-vs-νμ pole choice,
+          replace a<sub>e</sub> with a<sub>τ</sub>.
+        </p>
         <p><button class="linkish" @click="openView('sphere')">open this view →</button></p>
       </section>
 

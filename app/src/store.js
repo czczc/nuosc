@@ -34,8 +34,8 @@ export const store = reactive({
   views: {
     oscillogram: { axis2: 'L', anim: 'dcp', play: true, marker: 0.5 },
     tube: { mode: 'tube', play: true, marker: 0.25, Lmax: 2 * PRESETS.DUNE.L },
-    sphere: { sweep: 'L', play: true, marker: 0, Lmax: 2 * PRESETS.DUNE.L },
-    phasors: { xaxis: 'L', play: true, marker: 0, Lmax: 2 * PRESETS.DUNE.L },
+    sphere: { sweep: 'L', pole: 'both', play: true, marker: 0 },
+    phasors: { xaxis: 'L', play: true, marker: 0 },
     biprob: { showNO: true, showIO: true, showSurf: false, anim: 'E', play: true, marker: 0.5 },
   },
 });
@@ -50,10 +50,8 @@ export function applyPreset(name) {
   // snap the shared energy to the experiment's beam peak
   store.E = p.Epeak;
   store.dcp = DEFAULTS.dcp;
-  // snap the L sweeps to the experiment's span (0 - 2L)
+  // snap the L sweep to the experiment's span (0 - 2L)
   store.views.tube.Lmax = 2 * p.L;
-  store.views.sphere.Lmax = 2 * p.L;
-  store.views.phasors.Lmax = 2 * p.L;
 }
 
 export function setTheme(t) {

@@ -22,7 +22,7 @@ function makeSweep(store) {
   const rho = store.rho, anti = store.anti, Lfixed = store.L, Efixed = store.E;
   if (sweep === 'L') {
     const eig = eigH(hamiltonian(ep, Efixed, rho, anti));
-    return { sweep, lo: 0, hi: vs.Lmax, stateAt: (sv) => ({ eig, L: sv }) };
+    return { sweep, lo: 0, hi: lRangeOf(store.basePreset)[1], stateAt: (sv) => ({ eig, L: sv }) };
   }
   if (sweep === 'E') {
     const [lo, hi] = eRangeOf(store.basePreset);
@@ -34,29 +34,49 @@ function makeSweep(store) {
   };
 }
 
-// Bloch vector of the νe–νμ subspace, initial state νμ (index 1):
-// bx = 2 Re(a_e conj(a_mu)), by = 2 Im(a_e conj(a_mu)), bz = |a_e|^2 - |a_mu|^2
-function bloch(eig, L) {
-  const ae = amp(eig, 1, 0, L), am = amp(eig, 1, 1, L);
-  const cr = C.mul(ae, C.conj(am));
-  return [2 * cr[0], 2 * cr[1], C.abs2(ae) - C.abs2(am)];
+// Bloch vectors of the νe–νμ and ντ–νμ subspaces, initial state νμ (index 1):
+// b = ( 2 Re(a_t conj(a_mu)), 2 Im(a_t conj(a_mu)), |a_t|^2 - |a_mu|^2 ), t = e or tau
+function blochPair(eig, L) {
+  const ae = amp(eig, 1, 0, L), am = amp(eig, 1, 1, L), at = amp(eig, 1, 2, L);
+  const crE = C.mul(ae, C.conj(am)), crT = C.mul(at, C.conj(am));
+  return {
+    bE: [2 * crE[0], 2 * crE[1], C.abs2(ae) - C.abs2(am)],
+    bT: [2 * crT[0], 2 * crT[1], C.abs2(at) - C.abs2(am)],
+    Pe: C.abs2(ae), Pm: C.abs2(am), Pt: C.abs2(at),
+  };
 }
+
+// flavor colors, matching the companion plot's Pe/Pμ/Pτ curves
+const FLAV = {
+  e: { color: 0xe05545, css: '#e05545', tint: [0.88, 0.33, 0.27] },
+  tau: { color: 0x44aa55, css: '#44aa55', tint: [0.27, 0.67, 0.33] },
+  mu: { css: '#4488ee' },
+};
 
 export default {
   id: 'sphere',
   label: 'Statesphere',
-  note: 'νe–νμ subspace projection of the 3-flavor state (8-D full space). Vector length < 1 = leakage into ντ; a pure 2-flavor oscillation would trace a surface circle.',
+  note: 'νe–νμ and/or ντ–νμ subspace projection of the 3-flavor state (8-D full space); arrow colors match the 2D panel (red νe, green ντ). Vector length < 1 = leakage into the third flavor; a pure 2-flavor oscillation would trace a surface circle.',
   extras: [
     {
-      key: 'sweep', type: 'select', label: 'sweep',
+      key: 'pole', type: 'select', label: 'north pole',
       options: [
-        { value: 'L', label: 'trajectory over L' },
-        { value: 'E', label: 'over E (state at detector)' },
-        { value: 'dcp', label: 'over δCP' },
+        { value: 'both', label: 'νe & ντ' },
+        { value: 'e', label: 'νe' },
+        { value: 'tau', label: 'ντ' },
       ],
     },
-    { key: 'Lmax', type: 'range', label: 'L max [km]', min: 100, max: (s) => lRangeOf(s.basePreset)[1], step: 5 },
-    { key: 'marker', type: 'marker', label: 'animate', step: 0.002 },
+    {
+      key: 'marker', type: 'marker', label: 'animate', step: 0.002,
+      select: {
+        key: 'sweep',
+        options: [
+          { value: 'L', label: 'L' },
+          { value: 'E', label: 'E' },
+          { value: 'dcp', label: 'δCP' },
+        ],
+      },
+    },
   ],
 
   create(container, store) {
@@ -79,57 +99,115 @@ export default {
         new THREE.LineBasicMaterial({ color: theme().axis, transparent: true, opacity: 0.6 })));
     }
 
-    const nLabel = textSprite('νe');
-    nLabel.position.set(0, R + 0.4, 0);
-    base.scene.add(nLabel);
-    const sLabel = textSprite('νμ');
+    const poleLabels = [];
+    let lastPole = null;
+    const sLabel = textSprite('νμ', 1, FLAV.mu.css);
     sLabel.position.set(0, -R - 0.4, 0);
     base.scene.add(sLabel);
 
-    // trajectory line, colored viridis along the sweep fraction
-    const trajGeo = new THREE.BufferGeometry();
-    trajGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NSAMP * 3), 3));
-    trajGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(NSAMP * 3), 3));
-    const traj = new THREE.Line(trajGeo, new THREE.LineBasicMaterial({ vertexColors: true }));
-    base.scene.add(traj);
+    // one trajectory line + one mesh arrow per subspace (GL lines are stuck at
+    // 1px, so the arrow is a cylinder + cone, oriented per frame)
+    const HEAD = 0.15;
+    const yUp = new THREE.Vector3(0, 1, 0);
 
-    // animated state vector: arrow from origin + marker sphere at tip
-    const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 0), R, 0xff8800, 0.3, 0.15);
-    base.scene.add(arrow);
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12),
-      new THREE.MeshBasicMaterial({ color: 0xff8800 }));
-    base.scene.add(tip);
+    function mkTraj() {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NSAMP * 3), 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(NSAMP * 3), 3));
+      const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ vertexColors: true }));
+      base.scene.add(line);
+      return { geo, line };
+    }
+
+    function mkArrow(color) {
+      const mat = new THREE.MeshBasicMaterial({ color });
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1, 12), mat);
+      const head = new THREE.Mesh(new THREE.ConeGeometry(0.08, HEAD, 16), mat);
+      const group = new THREE.Group();
+      group.add(shaft, head);
+      base.scene.add(group);
+      const v = new THREE.Vector3();
+      return {
+        group,
+        set(b) {
+          v.set(R * b[0], R * b[2], R * b[1]);
+          const len = v.length();
+          const shaftLen = Math.max(len - HEAD, 1e-4);
+          shaft.scale.set(1, shaftLen, 1);
+          shaft.position.y = shaftLen / 2;
+          head.position.y = shaftLen + HEAD / 2;
+          if (len > 1e-6) group.quaternion.setFromUnitVectors(yUp, v.normalize());
+        },
+      };
+    }
+
+    const sets = {
+      e: { traj: mkTraj(), arrow: mkArrow(FLAV.e.color) },
+      tau: { traj: mkTraj(), arrow: mkArrow(FLAV.tau.color) },
+    };
 
     // cache built by update(); tick/probe read the marker through it
     let markerState = null;
 
     function update() {
       const { sweep, lo, hi, stateAt } = makeSweep(store);
+      const pole = store.views.sphere.pole;
+
+      if (pole !== lastPole) {
+        for (const l of poleLabels) base.scene.remove(l);
+        poleLabels.length = 0;
+        const addLabel = (text, y, color) => {
+          const s = textSprite(text, 1, color);
+          s.position.set(0, y, 0);
+          base.scene.add(s);
+          poleLabels.push(s);
+        };
+        if (pole === 'both') {
+          addLabel([['νe', FLAV.e.css], [' / ', null], ['ντ', FLAV.tau.css]], R + 0.4);
+        } else if (pole === 'tau') {
+          addLabel('ντ', R + 0.4, FLAV.tau.css);
+        } else {
+          addLabel('νe', R + 0.4, FLAV.e.css);
+        }
+        lastPole = pole;
+      }
+
+      const showE = pole !== 'tau', showT = pole !== 'e';
+      sets.e.traj.line.visible = sets.e.arrow.group.visible = showE;
+      sets.tau.traj.line.visible = sets.tau.arrow.group.visible = showT;
+
       const n = sweep === 'L' ? NSAMP : 512;
-      const pos = trajGeo.attributes.position, col = trajGeo.attributes.color;
+      const posE = sets.e.traj.geo.attributes.position, colE = sets.e.traj.geo.attributes.color;
+      const posT = sets.tau.traj.geo.attributes.position, colT = sets.tau.traj.geo.attributes.color;
       for (let i = 0; i < n; i++) {
         const t = i / (n - 1);
         const st = stateAt(lo + t * (hi - lo));
-        const b = bloch(st.eig, st.L);
-        pos.setXYZ(i, R * b[0], R * b[2], R * b[1]);
-        const [cr, cg, cb] = viridis(t);
-        col.setXYZ(i, cr, cg, cb);
+        const { bE, bT } = blochPair(st.eig, st.L);
+        posE.setXYZ(i, R * bE[0], R * bE[2], R * bE[1]);
+        posT.setXYZ(i, R * bT[0], R * bT[2], R * bT[1]);
+        if (pole === 'both') {
+          // flavor-tinted gradients (dim -> bright along the sweep) so the two
+          // trajectories stay distinguishable; single mode keeps viridis
+          const k = 0.35 + 0.65 * t;
+          colE.setXYZ(i, FLAV.e.tint[0] * k, FLAV.e.tint[1] * k, FLAV.e.tint[2] * k);
+          colT.setXYZ(i, FLAV.tau.tint[0] * k, FLAV.tau.tint[1] * k, FLAV.tau.tint[2] * k);
+        } else {
+          const [cr, cg, cb] = viridis(t);
+          colE.setXYZ(i, cr, cg, cb);
+          colT.setXYZ(i, cr, cg, cb);
+        }
       }
-      trajGeo.setDrawRange(0, n);
-      pos.needsUpdate = true;
-      col.needsUpdate = true;
-      trajGeo.computeBoundingSphere();
+      for (const s of Object.values(sets)) {
+        s.traj.geo.setDrawRange(0, n);
+        s.traj.geo.attributes.position.needsUpdate = true;
+        s.traj.geo.attributes.color.needsUpdate = true;
+        s.traj.geo.computeBoundingSphere();
+      }
 
       markerState = (frac) => {
         const sv = lo + frac * (hi - lo);
         const st = stateAt(sv);
-        const ae = amp(st.eig, 1, 0, st.L), am = amp(st.eig, 1, 1, st.L), at = amp(st.eig, 1, 2, st.L);
-        const cr = C.mul(ae, C.conj(am));
-        return {
-          sweep, sv,
-          b: [2 * cr[0], 2 * cr[1], C.abs2(ae) - C.abs2(am)],
-          Pe: C.abs2(ae), Pm: C.abs2(am), Pt: C.abs2(at),
-        };
+        return { sweep, sv, ...blochPair(st.eig, st.L) };
       };
     }
 
@@ -138,22 +216,23 @@ export default {
       if (vs.play) vs.marker = (vs.marker + dt / PERIOD_S) % 1;
       if (!markerState) return;
       const st = markerState(vs.marker);
-      const v = new THREE.Vector3(R * st.b[0], R * st.b[2], R * st.b[1]);
-      const len = v.length();
-      if (len > 1e-6) arrow.setDirection(v.clone().normalize());
-      arrow.setLength(Math.max(len, 1e-4), 0.3, 0.15);
-      tip.position.copy(v);
+      sets.e.arrow.set(st.bE);
+      sets.tau.arrow.set(st.bT);
     }
 
     // readout at the CURRENT marker (no raycast)
     function probe() {
       if (!markerState) return null;
+      const pole = store.views.sphere.pole;
       const st = markerState(store.views.sphere.marker);
       const name = st.sweep === 'L' ? `L ${Math.round(st.sv)} km`
         : st.sweep === 'E' ? `E ${st.sv.toFixed(2)} GeV`
         : `δCP ${Math.round(st.sv)}°`;
-      const bn = Math.hypot(st.b[0], st.b[1], st.b[2]);
-      return `${name} · Pe ${st.Pe.toFixed(4)} Pμ ${st.Pm.toFixed(4)} Pτ ${st.Pt.toFixed(4)} · |b| ${bn.toFixed(4)}`;
+      const bnE = Math.hypot(st.bE[0], st.bE[1], st.bE[2]);
+      const bnT = Math.hypot(st.bT[0], st.bT[1], st.bT[2]);
+      const btxt = pole === 'both' ? `|b(e)| ${bnE.toFixed(4)} |b(τ)| ${bnT.toFixed(4)}`
+        : `|b| ${(pole === 'tau' ? bnT : bnE).toFixed(4)}`;
+      return `${name} · Pe ${st.Pe.toFixed(4)} Pμ ${st.Pm.toFixed(4)} Pτ ${st.Pt.toFixed(4)} · ${btxt}`;
     }
 
     return { base, update, tick, probe, dispose: () => base.dispose() };

@@ -37,26 +37,33 @@ function grayscale(t) {
 export const PALETTES = { rainbow, viridis, coolwarm, grayscale };
 
 // Canvas sized to the text so long labels are never cut off.
-function textCanvas(text) {
+// text is a string or an array of [text, color?] segments (multi-color labels).
+function textCanvas(text, color) {
+  const segs = Array.isArray(text) ? text : [[text, color]];
   const c = document.createElement('canvas');
   const g = c.getContext('2d');
   const font = '28px ui-monospace, monospace';
   g.font = font;
-  c.width = Math.ceil(g.measureText(text).width) + 16;
+  const widths = segs.map(([t]) => g.measureText(t).width);
+  c.width = Math.ceil(widths.reduce((a, b) => a + b, 0)) + 16;
   c.height = 64;
   g.font = font; // resizing the canvas resets context state
-  g.fillStyle = theme().label;
-  g.textAlign = 'center';
+  g.textAlign = 'left';
   g.textBaseline = 'middle';
-  g.fillText(text, c.width / 2, c.height / 2);
+  let x = 8;
+  for (let i = 0; i < segs.length; i++) {
+    g.fillStyle = segs[i][1] ?? theme().label;
+    g.fillText(segs[i][0], x, c.height / 2);
+    x += widths[i];
+  }
   return c;
 }
 
 // Billboard label (always faces the camera). SceneBase rescales it every frame so
 // its on-screen height stays constant while zooming; `k` scales relative to the
 // standard label height.
-export function textSprite(text, k = 1) {
-  const c = textCanvas(text);
+export function textSprite(text, k = 1, color) {
+  const c = textCanvas(text, color);
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
   s.userData.labelK = k;
   s.userData.labelAspect = c.width / c.height;

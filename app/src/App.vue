@@ -43,16 +43,16 @@ const vs = computed(() => store.views[store.view]); // current view's play/marke
           <span class="chip" :class="{ on: store.preset === 'custom' }">custom</span>
         </div>
         <div class="group" role="group" aria-label="Display">
-          <button class="faqbtn" :class="{ on: !!store.faq }"
-            @click="router.push(store.faq ? '/' + store.view : '/faq')">
-            FAQ
-          </button>
           <select v-model="store.palette" class="palette" aria-label="Color palette" title="color palette">
             <option v-for="p in PALETTE_NAMES" :key="p" :value="p">{{ p }}</option>
           </select>
           <button class="themebtn" :title="store.theme === 'dark' ? 'switch to light mode' : 'switch to dark mode'"
             @click="setTheme(store.theme === 'dark' ? 'light' : 'dark')">
             {{ store.theme === 'dark' ? '☀' : '☾' }}
+          </button>
+          <button class="faqbtn" :class="{ on: !!store.faq }" title="FAQ"
+            @click="router.push(store.faq ? '/' + store.view : '/faq')">
+            ?
           </button>
         </div>
       </div>
@@ -113,17 +113,15 @@ header {
 .navbtn.play { font-size: 10px; }
 .navbtn:hover { background: var(--surface-2); }
 .faqbtn {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: none; color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--muted);
-  background: none;
-  border: none;
-  border-radius: 999px;
-  padding: 3px 12px;
-  cursor: pointer;
+  font-size: 15px; line-height: 1;
+  padding: 0; cursor: pointer;
 }
-.faqbtn:hover { color: var(--text); }
-.faqbtn.on { color: var(--accent-ink); background: var(--accent); font-weight: 700; }
+.faqbtn:hover { color: var(--accent); border-color: var(--accent); }
+.faqbtn.on { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); font-weight: 700; }
 .themebtn {
   width: 28px; height: 28px;
   border: none; border-radius: 50%;
