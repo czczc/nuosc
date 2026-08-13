@@ -1,5 +1,5 @@
 <script setup>
-import { store } from '../store.js';
+import { store, applyPreset } from '../store.js';
 
 const props = defineProps({ viewDef: { type: Object, required: true } });
 const vs = store.views[props.viewDef.id];
@@ -45,6 +45,9 @@ function lim(v) {
         <button class="playbtn" :title="vs.play ? 'pause' : 'play'" @click="vs.play = !vs.play">
           {{ vs.play ? '❚❚' : '▶' }}
         </button>
+        <button class="playbtn reset" title="reset to experiment defaults" @click="applyPreset(store.basePreset)">
+          ↺
+        </button>
         <input :id="'x-' + e.key" v-model.number="vs[e.key]" type="range" min="0" max="1" :step="e.step" />
       </div>
     </template>
@@ -70,6 +73,7 @@ h3 { display: flex; align-items: center; justify-content: space-between; }
   padding: 0; cursor: pointer;
 }
 .playbtn:hover { border-color: var(--accent); }
+.playbtn.reset { font-size: 13px; }
 select.mini { flex: 0 0 62px; }
 select {
   background: var(--surface-3);

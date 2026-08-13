@@ -5,6 +5,7 @@ import { store } from '../store.js';
 const props = defineProps({ companion: { type: Object, required: true } });
 const canvas = ref(null);
 const title = computed(() => props.companion.title(store));
+const frameStyle = computed(() => (props.companion.height ? { height: props.companion.height + 'px' } : null));
 
 let stopDraw = null;
 let raf = 0;
@@ -36,7 +37,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="card companion">
     <h3>{{ title }}</h3>
-    <div class="frame">
+    <div class="frame" :style="frameStyle">
       <canvas ref="canvas"></canvas>
     </div>
   </div>

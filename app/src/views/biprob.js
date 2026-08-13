@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
-import { engineParams, eRangeOf } from '../engines/constants.js';
+import { engineParams, eRangeOf, lRangeOf } from '../engines/constants.js';
 import { theme } from '../theme.js';
 import { plot2d } from './plot2d.js';
 
@@ -14,8 +14,9 @@ const eSpan = (preset) => {
   const [e0, e1] = eRangeOf(preset);
   return [Math.max(E_FLOOR, e0), e1];
 };
-const zOfE = (E, E_MIN, E_MAX) => ((E - E_MIN) / (E_MAX - E_MIN) - 0.5) * SZ;
+const zOfE = (E, E_MAX) => -(E / E_MAX) * SZ; // one-sided: z = 0 is E = 0; E grows toward -z as in oscillogram
 const ORD_DEF = { NO: { color: 0xe07040, sign: 1 }, IO: { color: 0x4090e0, sign: -1 } };
+const LOOP_S = 10; // ~10 s per sweep of the marker, as in oscillogram
 
 function pair(ep, dm31, E, L, rho, dcpRad) {
   const args = [ep.s12sq, ep.s13sq, ep.s23sq, dcpRad, ep.dm21, dm31, L, E, rho * ep.Ye, 1];
@@ -31,27 +32,32 @@ export default {
   extras: [
     { key: 'showNO', type: 'checkbox', label: 'Normal ordering' },
     { key: 'showIO', type: 'checkbox', label: 'Inverted ordering' },
+    { key: 'showSurf', type: 'checkbox', label: 'tube surface' },
+    {
+      key: 'marker', type: 'marker', label: 'animate', step: 0.002,
+      select: {
+        key: 'anim',
+        options: [
+          { value: 'L', label: 'L' },
+          { value: 'E', label: 'E' },
+          { value: 'dcp', label: 'δCP' },
+        ],
+      },
+    },
   ],
   note: 'Ring = the ellipse traced as δCP sweeps 0–360° at one energy; the shared δCP slider moves the markers. E < 0.5 GeV excluded from the tube for readability.',
 
   create(container, store) {
-    const base = new SceneBase(container, { camPos: [15, 11, 13], target: [4, 4, 0] });
+    // side from +x so E (which grows toward -z) increases to the right on screen
+    const base = new SceneBase(container, { camPos: [15, 11, -17], target: [4, 4, -4], snapPlanes: { side: [1, 0, 0] } });
 
     const axMat = new THREE.LineBasicMaterial({ color: theme().axis });
     for (const pts of [
-      [[0, 0, 0], [SP + 0.6, 0, 0]], [[0, 0, 0], [0, SP + 0.6, 0]], [[0, 0, -SZ / 2 - 0.6], [0, 0, SZ / 2 + 0.6]],
+      [[0, 0, 0], [SP + 0.6, 0, 0]], [[0, 0, 0], [0, SP + 0.6, 0]], [[0, 0, 0], [0, 0, -SZ - 0.6]],
     ]) base.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map((p) => new THREE.Vector3(...p))), axMat));
-    const xl = textSprite('P(numu->nue)'); xl.position.set(SP + 1.6, 0, 0); base.scene.add(xl);
-    const yl = textSprite('P(anti)'); yl.position.set(0, SP + 1, 0); base.scene.add(yl);
+    const xl = textSprite('P(νμ→νe)'); xl.position.set(SP + 1.6, 0, 0); base.scene.add(xl);
+    const yl = textSprite('P̄(ν̄μ→ν̄e)'); yl.position.set(0, SP + 1, 0); base.scene.add(yl);
     let zl = null, lastZKey = null;
-
-    const diag = new THREE.Mesh(
-      new THREE.PlaneGeometry(13, 9.5),
-      new THREE.MeshBasicMaterial({ color: 0x8899aa, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false })
-    );
-    diag.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, -1, 0).normalize());
-    diag.position.set(SP / 2, SP / 2, 0);
-    base.scene.add(diag);
 
     const ORD = {};
     for (const [name, def] of Object.entries(ORD_DEF)) {
@@ -60,6 +66,17 @@ export default {
       rgeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NR * NDCP * 2 * 3), 3));
       o.rings = new THREE.LineSegments(rgeo, new THREE.LineBasicMaterial({ color: def.color, transparent: true, opacity: 0.55 }));
       base.scene.add(o.rings);
+      // translucent tube surface: the dCP ellipses extruded along E (from the prototype)
+      const tgeo = new THREE.BufferGeometry();
+      tgeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NE * NDCP * 3), 3));
+      const idx = [];
+      for (let i = 0; i < NE - 1; i++) for (let j = 0; j < NDCP; j++) {
+        const a = i * NDCP + j, b = i * NDCP + (j + 1) % NDCP, c = (i + 1) * NDCP + j, d = (i + 1) * NDCP + (j + 1) % NDCP;
+        idx.push(a, b, c, b, d, c);
+      }
+      tgeo.setIndex(idx);
+      o.tube = new THREE.Mesh(tgeo, new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false }));
+      base.scene.add(o.tube);
       o.slice = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: def.color }));
       base.scene.add(o.slice);
       o.marker = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), new THREE.MeshBasicMaterial({ color: def.color }));
@@ -73,6 +90,7 @@ export default {
     base.scene.add(connector);
 
     let readout = '';
+    let maxP = 1e-6, lastGridKey = null;
 
     function update() {
       const ep = engineParams(store);
@@ -85,55 +103,75 @@ export default {
       if (zKey !== lastZKey) {
         if (zl) base.scene.remove(zl);
         zl = textSprite(zKey);
-        zl.position.set(0, -0.5, SZ / 2 + 1.6);
+        zl.position.set(0, -0.5, -SZ - 1.6);
         base.scene.add(zl);
         lastZKey = zKey;
       }
 
-      // pass 1: grids + shared scale
-      let maxP = 1e-6;
-      for (const o of Object.values(ORD)) {
-        o.P = new Float32Array(NE * NDCP);
-        o.Pb = new Float32Array(NE * NDCP);
-        for (let i = 0; i < NE; i++) {
-          const E = E_MIN + (i / (NE - 1)) * (E_MAX - E_MIN);
-          for (let j = 0; j < NDCP; j++) {
-            const [p, pb] = pair(ep, o.sign * dm31mag, E, L, rho, (j / NDCP) * 2 * Math.PI);
-            const k = i * NDCP + j;
-            o.P[k] = p; o.Pb[k] = pb;
-            if (p > maxP) maxP = p;
-            if (pb > maxP) maxP = pb;
+      // the ring stack doesn't depend on E/dCP — skip the NE x NDCP grids when
+      // only those sliders moved (e.g. play sweeping E)
+      const gridKey = JSON.stringify([ep, L, rho, E_MIN, E_MAX]);
+      if (gridKey !== lastGridKey) {
+        lastGridKey = gridKey;
+
+        // pass 1: grids + shared scale
+        maxP = 1e-6;
+        for (const o of Object.values(ORD)) {
+          o.P = new Float32Array(NE * NDCP);
+          o.Pb = new Float32Array(NE * NDCP);
+          for (let i = 0; i < NE; i++) {
+            const E = E_MIN + (i / (NE - 1)) * (E_MAX - E_MIN);
+            for (let j = 0; j < NDCP; j++) {
+              const [p, pb] = pair(ep, o.sign * dm31mag, E, L, rho, (j / NDCP) * 2 * Math.PI);
+              const k = i * NDCP + j;
+              o.P[k] = p; o.Pb[k] = pb;
+              if (p > maxP) maxP = p;
+              if (pb > maxP) maxP = pb;
+            }
           }
+        }
+
+        for (const o of Object.values(ORD)) {
+          const rp = o.rings.geometry.attributes.position;
+          let v = 0;
+          for (let r = 0; r < NR; r++) {
+            const i = Math.round((r / (NR - 1)) * (NE - 1));
+            const z = zOfE(E_MIN + (i / (NE - 1)) * (E_MAX - E_MIN), E_MAX);
+            for (let j = 0; j < NDCP; j++) {
+              const k1 = i * NDCP + j, k2 = i * NDCP + (j + 1) % NDCP;
+              rp.setXYZ(v++, (o.P[k1] / maxP) * SP, (o.Pb[k1] / maxP) * SP, z);
+              rp.setXYZ(v++, (o.P[k2] / maxP) * SP, (o.Pb[k2] / maxP) * SP, z);
+            }
+          }
+          rp.needsUpdate = true;
+
+          const tp = o.tube.geometry.attributes.position;
+          for (let i = 0; i < NE; i++) {
+            const z = zOfE(E_MIN + (i / (NE - 1)) * (E_MAX - E_MIN), E_MAX);
+            for (let j = 0; j < NDCP; j++) {
+              const k = i * NDCP + j;
+              tp.setXYZ(k, (o.P[k] / maxP) * SP, (o.Pb[k] / maxP) * SP, z);
+            }
+          }
+          tp.needsUpdate = true;
         }
       }
 
       for (const [name, o] of Object.entries(ORD)) {
         const vis = name === 'NO' ? vs.showNO : vs.showIO;
         o.rings.visible = o.slice.visible = o.marker.visible = vis;
-
-        const rp = o.rings.geometry.attributes.position;
-        let v = 0;
-        for (let r = 0; r < NR; r++) {
-          const i = Math.round((r / (NR - 1)) * (NE - 1));
-          const z = zOfE(E_MIN + (i / (NE - 1)) * (E_MAX - E_MIN), E_MIN, E_MAX);
-          for (let j = 0; j < NDCP; j++) {
-            const k1 = i * NDCP + j, k2 = i * NDCP + (j + 1) % NDCP;
-            rp.setXYZ(v++, (o.P[k1] / maxP) * SP, (o.Pb[k1] / maxP) * SP, z);
-            rp.setXYZ(v++, (o.P[k2] / maxP) * SP, (o.Pb[k2] / maxP) * SP, z);
-          }
-        }
-        rp.needsUpdate = true;
+        o.tube.visible = vis && vs.showSurf;
 
         const pts = [];
         for (let j = 0; j < NDCP; j++) {
           const [p, pb] = pair(ep, o.sign * dm31mag, Es, L, rho, (j / NDCP) * 2 * Math.PI);
-          pts.push(new THREE.Vector3((p / maxP) * SP, (pb / maxP) * SP, zOfE(Es, E_MIN, E_MAX)));
+          pts.push(new THREE.Vector3((p / maxP) * SP, (pb / maxP) * SP, zOfE(Es, E_MAX)));
         }
         o.slice.geometry.dispose();
         o.slice.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 144, 0.045, 8, true);
 
         [o.pM, o.pbM] = pair(ep, o.sign * dm31mag, Es, L, rho, dcpM);
-        o.marker.position.set((o.pM / maxP) * SP, (o.pbM / maxP) * SP, zOfE(Es, E_MIN, E_MAX));
+        o.marker.position.set((o.pM / maxP) * SP, (o.pbM / maxP) * SP, zOfE(Es, E_MAX));
       }
       connector.visible = vs.showNO && vs.showIO;
       connector.geometry.setFromPoints([ORD.NO.marker.position.clone(), ORD.IO.marker.position.clone()]);
@@ -143,11 +181,30 @@ export default {
         ` · ΔP ${(ORD.NO.pM - ORD.IO.pM).toFixed(4)}`;
     }
 
-    return { base, update, probe: () => readout, dispose: () => base.dispose() };
+    // play/marker animation: the marker drives the shared slider of the chosen variable
+    let lastMarker = store.views.biprob.marker;
+
+    function tick(dt) {
+      const vs = store.views.biprob;
+      if (vs.play) vs.marker = (vs.marker + dt / LOOP_S) % 1;
+      if (vs.marker !== lastMarker) {
+        const [v0, v1] = vs.anim === 'L' ? lRangeOf(store.basePreset)
+          : vs.anim === 'E' ? eRangeOf(store.basePreset) : [0, 360];
+        const v = v0 + vs.marker * (v1 - v0);
+        // rounded to the shared sliders' steps
+        if (vs.anim === 'L') store.L = Math.round(v / 5) * 5;
+        else if (vs.anim === 'E') store.E = Math.round(v * 100) / 100;
+        else store.dcp = Math.round(v);
+      }
+      lastMarker = vs.marker;
+    }
+
+    return { base, update, tick, probe: () => readout, dispose: () => base.dispose() };
   },
 
   companion: {
     title: (store) => `Biprobability at E = ${store.E} GeV`,
+    height: 280,
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
@@ -174,7 +231,7 @@ export default {
         [o.pM, o.pbM] = pair(ep, o.sign * dm31mag, Es, L, rho, dcpM);
       }
       const m = maxP * 1.05;
-      const P = plot2d(ctx, w, h, dpr, { x: [0, m], y: [0, m], xTitle: 'P(νμ→νe)', yTitle: 'P̄(ν̄μ→ν̄e)' });
+      const P = plot2d(ctx, w, h, dpr, { x: [0, m], y: [0, m], xTitle: 'P(νμ→νe)', yTitle: 'P̄(ν̄μ→ν̄e)', square: true, xTicks: 3, yTicks: 3 });
       const X = (p) => P.X(p), Y = (p) => P.Y(p);
 
       ctx.strokeStyle = theme().plotFrame;

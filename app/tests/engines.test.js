@@ -43,7 +43,9 @@ test('NuFast (N_Newton=1) agrees with Jacobi across the grid to 5e-7', () => {
 });
 
 test('DUNE reference point', () => {
-  const ep = engineParams(base);
+  // pinned to the NuFit 4.0 parameter set the reference values were validated with,
+  // independent of the app's (updatable) DEFAULTS
+  const ep = engineParams({ ...base, th12: 33.82, th13: 8.61, th23: 48.3, dm21: 7.39, dm31: 2.525, dcp: 217 });
   const P = probabilityMatter(ep.s12sq, ep.s13sq, ep.s23sq, ep.delta, ep.dm21, ep.dm31, 1300, 2.5, 1.5, 1);
   assert.ok(Math.abs(P[1][0] - 0.08437) < 2e-4, `P(mu->e)=${P[1][0]}`);
   const Pb = probabilityMatter(ep.s12sq, ep.s13sq, ep.s23sq, ep.delta, ep.dm21, ep.dm31, 1300, -2.5, 1.5, 1);

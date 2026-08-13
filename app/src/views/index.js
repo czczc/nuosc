@@ -20,6 +20,7 @@
 //                                   // marker-driven repaints are triggered by CompanionPanel's rAF
 //                                   // only if markerDriven is true
 //     markerDriven?: boolean,
+//     height?: number,             // panel frame height in px (default 150)
 //   },
 //   companion2?: { ... },           // optional second panel, same shape as companion
 // }

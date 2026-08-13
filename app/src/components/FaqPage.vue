@@ -45,10 +45,11 @@ onMounted(() => {
         <p>
           Everything on screen is calculated live in your browser from the real equations of
           three-flavor neutrino oscillation, including the extra effect neutrinos feel when they travel
-          through the Earth’s rock (the “matter effect”). The default parameter values are the world
-          averages from experiments (PDG 2023), and every one of them can be adjusted under
-          “all parameters”. Antineutrinos — the mirror partners of neutrinos — are computed the same way
-          with the relevant signs flipped.
+          through the Earth’s rock (the “matter effect”). The default parameter values come from the
+          world combined fit of all oscillation experiments
+          (<a href="http://www.nu-fit.org" target="_blank" rel="noopener">NuFit 6.1, 2025</a>), and every
+          one of them can be adjusted under “all parameters”. Antineutrinos — the mirror partners of
+          neutrinos — are computed the same way with the relevant signs flipped.
         </p>
         <p>
           Two calculators share the work. <strong>NuFast-LBL</strong>

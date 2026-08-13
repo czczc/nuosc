@@ -9,14 +9,16 @@ export const YerhoE2a = 1.52588e-4;                              // a = 2*sqrt2*
 
 export const DEG = Math.PI / 180;
 
-// PDG 2023 defaults (matching the legacy app and the validated prototypes)
+// NuFit 6.1 (2025) global-fit best fit, normal ordering, IC24 with SK atmospheric
+// data (www.nu-fit.org, arXiv:2410.05380). IO values differ slightly; the app
+// approximates IO by flipping the sign of dm31.
 export const DEFAULTS = {
-  th12: 33.82,   // degrees
-  th13: 8.61,
-  th23: 48.3,
-  dm21: 7.39,    // 1e-5 eV^2
-  dm31: 2.525,   // 1e-3 eV^2 (magnitude; sign from mass ordering)
-  dcp: 217,      // degrees
+  th12: 33.76,   // degrees
+  th13: 8.62,
+  th23: 43.29,
+  dm21: 7.537,   // 1e-5 eV^2
+  dm31: 2.511,   // 1e-3 eV^2 (magnitude; sign from mass ordering)
+  dcp: 212,      // degrees
   Ye: 0.5,
 };
 

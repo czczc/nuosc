@@ -18,7 +18,7 @@ export const store = reactive({
   anti: false,
   normalOrdering: true,
 
-  // "all parameters" expansion (PDG 2023 defaults, legacy app ranges)
+  // "all parameters" expansion (NuFit 6.1 defaults, legacy app ranges)
   th12: DEFAULTS.th12,
   th13: DEFAULTS.th13,
   th23: DEFAULTS.th23,
@@ -32,11 +32,11 @@ export const store = reactive({
 
   // per-view state (marker is a 0..1 fraction of the swept range)
   views: {
-    oscillogram: { axis2: 'L', anim: 'L', play: false, marker: 0.5 },
+    oscillogram: { axis2: 'L', anim: 'dcp', play: true, marker: 0.5 },
     tube: { mode: 'tube', play: true, marker: 0.25, Lmax: 2 * PRESETS.DUNE.L },
     sphere: { sweep: 'L', play: true, marker: 0, Lmax: 2 * PRESETS.DUNE.L },
     phasors: { xaxis: 'L', play: true, marker: 0, Lmax: 2 * PRESETS.DUNE.L },
-    biprob: { showNO: true, showIO: true },
+    biprob: { showNO: true, showIO: true, showSurf: false, anim: 'E', play: true, marker: 0.5 },
   },
 });
 
@@ -49,6 +49,7 @@ export function applyPreset(name) {
   store.rho = p.rho;
   // snap the shared energy to the experiment's beam peak
   store.E = p.Epeak;
+  store.dcp = DEFAULTS.dcp;
   // snap the L sweeps to the experiment's span (0 - 2L)
   store.views.tube.Lmax = 2 * p.L;
   store.views.sphere.Lmax = 2 * p.L;

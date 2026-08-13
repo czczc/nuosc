@@ -69,8 +69,9 @@ const LABEL_FRAC = 0.034;
 // - always orthographic, frustum matched to a reference perspective view (locked decision, map #1)
 // - continuous render loop with optional per-frame tick (views use it for play/marker animation)
 export class SceneBase {
-  constructor(container, { camPos = [7, 5, 8], target = [0, 0, 0] } = {}) {
+  constructor(container, { camPos = [7, 5, 8], target = [0, 0, 0], snapPlanes = {} } = {}) {
     this.container = container;
+    this._snapPlanes = { front: [0, 0, 1], top: [0, 1, 0.001], side: [-1, 0, 0], ...snapPlanes };
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(theme().stage);
 
@@ -142,17 +143,14 @@ export class SceneBase {
     this.renderer.setSize(w, h);
   }
 
-  // Snap the camera to an axis-aligned projection, keeping the current distance and target:
-  // 'front' from +z (x right, y up), 'top' from +y (x right, -z up), 'side' from -x (z right, y up).
+  // Snap the camera to an axis-aligned projection, keeping the current distance and target.
+  // Defaults: 'front' from +z (x right, y up), 'top' from +y (x right, -z up),
+  // 'side' from -x (z right, y up); views override per-plane via the snapPlanes option.
   // Camera up stays world +y — OrbitControls caches its up axis at construction, so
   // changing it makes orbiting feel twisted. The top view is tilted by an epsilon
   // instead, so lookAt/OrbitControls never degenerate.
   snapTo(plane) {
-    const to = {
-      front: [0, 0, 1],
-      top: [0, 1, 0.001],
-      side: [-1, 0, 0],
-    }[plane];
+    const to = this._snapPlanes[plane];
     if (!to) return;
     const t = this.controls.target;
     const dist = this.camera.position.distanceTo(t);

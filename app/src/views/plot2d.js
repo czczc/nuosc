@@ -24,9 +24,16 @@ function fmtTick(t, step) {
   return t.toFixed(prec);
 }
 
-export function plot2d(ctx, w, h, dpr, { x: [x0, x1], y: [y0, y1], xTitle, yTitle, xTicks = 6, yTicks = 4 }) {
-  const ml = 48 * dpr, mr = 10 * dpr, mt = 8 * dpr, mb = 30 * dpr;
-  const pw = w - ml - mr, ph = h - mt - mb;
+export function plot2d(ctx, w, h, dpr, { x: [x0, x1], y: [y0, y1], xTitle, yTitle, xTicks = 6, yTicks = 4, square = false }) {
+  let ml = 48 * dpr, mt = 8 * dpr;
+  const mr = 10 * dpr, mb = 30 * dpr;
+  let pw = w - ml - mr, ph = h - mt - mb;
+  if (square) { // 1:1 aspect: shrink the plot rect to a centered square
+    const s = Math.min(pw, ph);
+    ml += (pw - s) / 2;
+    mt += (ph - s) / 2;
+    pw = ph = s;
+  }
   const X = (x) => ml + pw * (x - x0) / (x1 - x0);
   const Y = (y) => mt + ph * (1 - (y - y0) / (y1 - y0));
 
@@ -65,7 +72,7 @@ export function plot2d(ctx, w, h, dpr, { x: [x0, x1], y: [y0, y1], xTitle, yTitl
   if (xTitle) { ctx.textBaseline = 'alphabetic'; ctx.fillText(xTitle, ml + pw / 2, h - 5 * dpr); }
   if (yTitle) {
     ctx.save();
-    ctx.translate(11 * dpr, mt + ph / 2);
+    ctx.translate(ml - 37 * dpr, mt + ph / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.textBaseline = 'middle';
     ctx.fillText(yTitle, 0, 0);
