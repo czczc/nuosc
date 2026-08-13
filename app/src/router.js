@@ -15,6 +15,7 @@ export const router = createRouter({
   routes: [
     { path: '/', redirect: `/${store.view}` },
     { path: '/faq/:section?', name: 'faq', component: none },
+    { path: '/experiments', name: 'experiments', component: none },
     { path: `/:view(${VIEW_IDS})`, name: 'view', component: none },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
@@ -23,11 +24,16 @@ export const router = createRouter({
 router.beforeEach((to) => {
   if (to.name === 'faq') {
     store.faq = to.params.section || 'engines';
+    store.exps = false;
+  } else if (to.name === 'experiments') {
+    store.exps = true;
+    store.faq = null;
   } else if (to.name === 'view') {
     // switching to a different view starts it from the experiment's initial state
     // (animations leave the shared sliders wherever they stopped)
     if (to.params.view !== store.view) applyPreset(store.basePreset);
     store.view = to.params.view;
     store.faq = null;
+    store.exps = false;
   }
 });

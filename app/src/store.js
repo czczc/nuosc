@@ -1,5 +1,5 @@
 import { reactive } from 'vue';
-import { DEFAULTS, PRESETS } from './engines/constants.js';
+import { DEFAULTS, PRESETS, presetOf } from './engines/constants.js';
 
 const storedTheme = typeof localStorage !== 'undefined' ? localStorage.getItem('nuglass-theme') : null;
 
@@ -7,6 +7,7 @@ export const store = reactive({
   theme: storedTheme === 'light' ? 'light' : 'dark',
   view: 'oscillogram',
   faq: null, // null = closed; 'engines' or a view id = FAQ page open, scrolled to that section
+  exps: false, // "my experiments" page open
   preset: 'DUNE',
   basePreset: 'DUNE', // last experiment clicked; keeps L spans stable while tweaking into "custom"
 
@@ -41,7 +42,7 @@ export const store = reactive({
 });
 
 export function applyPreset(name) {
-  const p = PRESETS[name];
+  const p = presetOf(name); // built-in or user-defined experiment
   if (!p) return;
   store.preset = name;
   store.basePreset = name;
@@ -49,7 +50,16 @@ export function applyPreset(name) {
   store.rho = p.rho;
   // snap the shared energy to the experiment's beam peak
   store.E = p.Epeak;
-  store.dcp = DEFAULTS.dcp;
+  // oscillation parameters: the experiment's own overrides (user experiments)
+  // or the global-fit defaults (built-ins)
+  const o = p.params ?? DEFAULTS;
+  store.th12 = o.th12;
+  store.th13 = o.th13;
+  store.th23 = o.th23;
+  store.dm21 = o.dm21;
+  store.dm31 = o.dm31;
+  store.dcp = o.dcp;
+  store.Ye = o.Ye ?? DEFAULTS.Ye;
 }
 
 export function setTheme(t) {

@@ -29,16 +29,24 @@ export const PRESETS = {
   T2K: { L: 295, rho: 2.6, Erange: [0.2, 1.5], Epeak: 0.6 },
 };
 
+// User-defined experiments (src/experiments.js) are registered here so the range
+// helpers and applyPreset resolve them exactly like built-ins. Entries share the
+// PRESETS shape plus an optional `params` object of oscillation-parameter overrides.
+export const USER_PRESETS = {};
+export function presetOf(name) {
+  return PRESETS[name] ?? USER_PRESETS[name];
+}
+
 // Active baseline span [km]: 0 to twice the experiment's L, or the full default span.
 export function lRangeOf(preset) {
-  const p = PRESETS[preset];
+  const p = presetOf(preset);
   return p ? [0, 2 * p.L] : [0, 5000];
 }
 
 // Active energy span [GeV]: the selected experiment's beam window, or the full default span.
 export const E_RANGE_DEFAULT = [0.2, 6];
 export function eRangeOf(preset) {
-  return PRESETS[preset]?.Erange ?? E_RANGE_DEFAULT;
+  return presetOf(preset)?.Erange ?? E_RANGE_DEFAULT;
 }
 
 // Convert UI parameter state to engine-ready values.

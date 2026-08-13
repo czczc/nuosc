@@ -35,7 +35,7 @@ onMounted(() => {
     <article class="doc">
       <h2>FAQ</h2>
       <p class="sub">
-        NuGlass is an interactive picture of neutrino oscillation — the strange way neutrinos change
+        NuGlass is an interactive picture of neutrino oscillation: the strange way neutrinos change
         from one type to another as they travel. Five 3D views, each paired with live 2D plots.
         This page explains what each view shows and how the numbers behind it are computed.
       </p>
@@ -48,21 +48,21 @@ onMounted(() => {
           through the Earth’s rock (the “matter effect”). The default parameter values come from the
           world combined fit of all oscillation experiments
           (<a href="http://www.nu-fit.org" target="_blank" rel="noopener">NuFit 6.1, 2025</a>), and every
-          one of them can be adjusted under “all parameters”. Antineutrinos — the mirror partners of
-          neutrinos — are computed the same way with the relevant signs flipped.
+          one of them can be adjusted under “all parameters”. Antineutrinos (the mirror partners of
+          neutrinos) are computed the same way with the relevant signs flipped.
         </p>
         <p>
           Two calculators share the work. <strong>NuFast-LBL</strong>
           (<a href="https://arxiv.org/abs/2405.02400" target="_blank" rel="noopener">arXiv:2405.02400</a>,
           <a href="https://github.com/PeterDenton/NuFast-LBL" target="_blank" rel="noopener">reference code</a>)
-          is a very fast method by Denton &amp; Parke — quick enough to recompute a whole surface of
+          is a very fast method by Denton &amp; Parke, quick enough to recompute a whole surface of
           ~26,000 points every time you drag a slider. It powers the oscillogram and biprobability views.
           The <strong>exact amplitude engine</strong> tracks the full quantum state of the neutrino, not
           just the final probabilities; the state sphere and phasor views need that extra information.
           The two are cross-checked against each other to better than one part in ten million.
         </p>
         <p>
-          <strong>Experiment presets</strong> — DUNE (a 1300 km beam from Illinois to South Dakota),
+          <strong>Experiment presets</strong>: DUNE (a 1300 km beam from Illinois to South Dakota),
           NOvA (810 km, Illinois to Minnesota) and T2K (295 km, across Japan) each set the travel
           distance, rock density and beam energy range of a real experiment. Picking one snaps every
           control to that experiment’s values; dragging any slider afterwards shows the “custom” chip
@@ -75,7 +75,7 @@ onMounted(() => {
         <p>
           A landscape of probability: the surface’s height and color show the chance that a muon
           neutrino has turned into an electron neutrino by the time it is detected. Left-to-right is the
-          neutrino’s energy E; the depth axis is your choice of a second variable — the travel distance L,
+          neutrino’s energy E; the depth axis is your choice of a second variable: the travel distance L,
           the CP phase δCP (the parameter that can make neutrinos and antineutrinos behave differently),
           or the density ρ of the rock the beam passes through. The palette menu in the top bar changes
           the color scale.
@@ -88,14 +88,14 @@ onMounted(() => {
         </p>
         <p>
           Press ▶ on the “animate” row to set the picture in motion, sweeping the distance, the energy,
-          or δCP — the matching slider in the controls panel moves along with it, so you can pause
+          or δCP; the matching slider in the controls panel moves along with it, so you can pause
           anywhere and continue by hand. The front / top / side buttons swing the camera to flat views:
           “top” looks straight down and turns the surface into the classic color-map oscillogram that
           experiments publish.
         </p>
         <p>
           How to read it: the ridges are where the oscillation effect is strongest, and each experiment
-          aims its beam energy at the biggest one. Animating δCP makes the ridges slide back and forth —
+          aims its beam energy at the biggest one. Animating δCP makes the ridges slide back and forth;
           that shift, compared between neutrinos and antineutrinos, is exactly what CP-violation
           searches measure. Along the ρ axis you can watch denser matter boost the signal for neutrinos
           or for antineutrinos, depending on which ordering of the neutrino masses nature chose.
@@ -117,7 +117,7 @@ onMounted(() => {
         </p>
         <p>
           How to read it: if neutrinos and antineutrinos behaved identically, the point would sit on the
-          gray diagonal — its distance from that diagonal is CP violation, seen live. The gap between
+          gray diagonal; its distance from that diagonal is CP violation, seen live. The gap between
           the orange and blue rings is what lets experiments tell the two mass orderings apart; where
           the rings overlap, that energy alone cannot decide.
         </p>
@@ -130,11 +130,11 @@ onMounted(() => {
           The neutrino’s quantum state drawn as an arrow inside a globe. The north pole means “certainly
           an electron neutrino”, the south pole “certainly a muon neutrino”, and everywhere in between
           is a quantum mixture of the two. As the neutrino travels, the arrow swings around and traces
-          the colored path — press ▶ to watch it move.
+          the colored path; press ▶ to watch it move.
         </p>
         <p>
           How to read it: a textbook two-type oscillation would keep the arrow’s tip on the globe’s
-          surface. Here the tip dips inside — a shorter arrow means part of the probability has leaked
+          surface. Here the tip dips inside: a shorter arrow means part of the probability has leaked
           into the third type, the tau neutrino, which this picture cannot show directly. The 2D panel
           plots all three probabilities along the sweep, with its marker synced to the 3D arrow.
         </p>
@@ -143,7 +143,7 @@ onMounted(() => {
           between “how electron” and “how muon” the neutrino currently is, so the bottom half simply
           means the muon side is still winning. The chance of turning into an electron neutrino never
           grows beyond a few percent, so the arrow can never climb far toward the north pole. And most
-          of what the muon neutrino loses goes to the tau neutrino instead — which in this picture does
+          of what the muon neutrino loses goes to the tau neutrino instead, which in this picture does
           not lift the arrow up but pulls it inward, toward the center. You can watch that hand-off in
           the 2D panel: the green (tau) curve absorbs almost everything the blue (muon) curve loses,
           while the red (electron) curve stays a thin ripple at the bottom.
@@ -157,7 +157,7 @@ onMounted(() => {
           <span class="k">b = ( 2&hairsp;Re(a<sub>e</sub>a<sub>μ</sub>*), 2&hairsp;Im(a<sub>e</sub>a<sub>μ</sub>*), |a<sub>e</sub>|² − |a<sub>μ</sub>|² )</span>,
           drawn with the last component vertical. The height is the probability difference
           P<sub>e</sub> − P<sub>μ</sub>; the two horizontal components are the real and imaginary parts
-          of the interference term (the “coherence”) between the flavors — the quantum-phase
+          of the interference term (the “coherence”) between the flavors: the quantum-phase
           information that probabilities alone don’t carry. |b| = 1 for a pure two-flavor state;
           anything shorter means probability sits in the third flavor. For the ντ-vs-νμ pole choice,
           replace a<sub>e</sub> with a<sub>τ</sub>.
@@ -169,14 +169,14 @@ onMounted(() => {
         <h3>Phasors</h3>
         <p>
           Why oscillation happens, drawn as directly as possible. Quantum mechanics adds up the three
-          ways a muon neutrino can become an electron neutrino as three arrows in a plane — one for each
+          ways a muon neutrino can become an electron neutrino as three arrows in a plane: one for each
           neutrino mass, each rotating at its own speed as the neutrino travels. The colored curves show
           the arrows chained head to tail, the white curve is their total, and the curve on the floor is
           the resulting probability.
         </p>
         <p>
-          How to read it: the probability peaks where the arrows line up and vanishes where they cancel —
-          oscillation is interference, the same phenomenon as overlapping ripples on a pond. Changing
+          How to read it: the probability peaks where the arrows line up and vanishes where they cancel.
+          Oscillation is interference, the same phenomenon as overlapping ripples on a pond. Changing
           δCP rotates the arrows relative to each other (moving where they align), while energy and rock
           density change the arrows’ lengths.
         </p>
@@ -191,24 +191,38 @@ onMounted(() => {
           into a tau neutrino (green), or turned into an electron neutrino (red). The tube’s thickness
           never changes, because the three chances always add up to 100%. The disk rides the animation
           marker and shows the mix at one spot. The tube also sits on an energy axis: drag the E slider
-          (or animate over E) and the whole tube glides along it while its pattern stretches — lower
+          (or animate over E) and the whole tube glides along it while its pattern stretches; lower
           energies flip flavor faster.
         </p>
         <p>
           Switch the display to “stacked bands” and the same information unrolls into a box: distance
           runs one way, beam energy the other, and at every point the red, blue, and green layers stack
-          up to exactly 1. The red carpet on the floor is the same surface the Oscillogram view shows —
-          the chance of turning into an electron neutrino — and the gap between the blue surface and the
+          up to exactly 1. The red carpet on the floor is the same surface the Oscillogram view shows
+          (the chance of turning into an electron neutrino), and the gap between the blue surface and the
           box ceiling is the tau share. A translucent slice marks the current energy: it is exactly the
           first 2D panel, standing inside the box.
         </p>
         <p>
-          How to read it: most of what leaves blue goes to green — muon neutrinos mostly turn into tau
+          How to read it: most of what leaves blue goes to green; muon neutrinos mostly turn into tau
           neutrinos. The thin red wedge is the electron-neutrino appearance that experiments like DUNE
           actually count. The two 2D panels are the matching flat charts: the mix along the beamline at
           the chosen energy, and the mix across energies at the disk's current position.
         </p>
         <p><button class="linkish" @click="openView('tube')">open this view →</button></p>
+      </section>
+
+      <section id="faq-experiments">
+        <h3>My experiments</h3>
+        <p>
+          The DUNE / NOvA / T2K chips in the top bar are presets: each sets the distance to the
+          detector, the rock density along the way, and the beam's energy window. The <span class="k">+</span>
+          chip opens a page where you can build your own: name it, set the baseline and beam, and, if
+          you want to explore, override the oscillation parameters themselves (the form starts from
+          DUNE's numbers). Saved experiments live in your browser's storage (nothing is uploaded) and
+          are there whenever you come back. Loading one makes it the active experiment everywhere,
+          exactly like a built-in chip: every view sweeps over its ranges, and the reset ↺ button
+          returns to its values.
+        </p>
       </section>
 
       <section id="faq-cite">

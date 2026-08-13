@@ -10,12 +10,15 @@ import ControlsCard from './components/ControlsCard.vue';
 import ViewExtras from './components/ViewExtras.vue';
 import CompanionPanel from './components/CompanionPanel.vue';
 import FaqPage from './components/FaqPage.vue';
+import ExperimentsPage from './components/ExperimentsPage.vue';
 
 const presetNames = Object.keys(PRESETS);
 const PALETTE_NAMES = Object.keys(PALETTES);
 
 const companions = (v) => [v.companion, v.companion2].filter(Boolean);
 const vs = computed(() => store.views[store.view]); // current view's play/marker state
+// the last chip names whatever isn't a built-in: "custom" tweaks or a loaded user experiment
+const extraChip = computed(() => (presetNames.includes(store.preset) ? 'custom' : store.preset));
 </script>
 
 <template>
@@ -23,13 +26,13 @@ const vs = computed(() => store.views[store.view]); // current view's play/marke
     <header>
       <img class="logo" src="./assets/logo.svg" alt="NuGlass" />
       <nav class="tabs" aria-label="View">
-        <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id && !store.faq }"
+        <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id && !store.faq && !store.exps }"
           @click="router.push('/' + v.id)">
           {{ v.label }}
         </button>
       </nav>
       <div class="right">
-        <div v-if="!store.faq" class="group" role="group" aria-label="Animation">
+        <div v-if="!store.faq && !store.exps" class="group" role="group" aria-label="Animation">
           <button class="navbtn play" :title="vs.play ? 'pause' : 'play'" @click="vs.play = !vs.play">
             {{ vs.play ? '❚❚' : '▶' }}
           </button>
@@ -40,7 +43,10 @@ const vs = computed(() => store.views[store.view]); // current view's play/marke
         <div class="group" role="group" aria-label="Experiment">
           <span v-for="p in presetNames" :key="p" class="chip" :class="{ on: store.preset === p }" role="button"
             tabindex="0" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">{{ p }}</span>
-          <span class="chip" :class="{ on: store.preset === 'custom' }">custom</span>
+          <span class="chip" :class="{ on: store.preset === extraChip }">{{ extraChip }}</span>
+          <span class="chip" :class="{ on: store.exps }" role="button" tabindex="0" title="define your own experiment"
+            @click="router.push(store.exps ? '/' + store.view : '/experiments')"
+            @keydown.enter="router.push(store.exps ? '/' + store.view : '/experiments')">+</span>
         </div>
         <div class="group" role="group" aria-label="Display">
           <select v-model="store.palette" class="palette" aria-label="Color palette" title="color palette">
@@ -59,7 +65,8 @@ const vs = computed(() => store.views[store.view]); // current view's play/marke
     </header>
 
     <main>
-      <FaqPage v-if="store.faq" />
+      <ExperimentsPage v-if="store.exps" />
+      <FaqPage v-else-if="store.faq" />
       <template v-else>
       <StageHost :key="store.view + '-' + store.theme" :view-def="VIEW_MAP[store.view]" />
       <aside>

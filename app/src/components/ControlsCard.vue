@@ -1,9 +1,9 @@
 <script setup>
 import { computed } from 'vue';
 import { store, markCustom } from '../store.js';
-import { PRESETS, lRangeOf, eRangeOf } from '../engines/constants.js';
+import { presetOf, lRangeOf, eRangeOf } from '../engines/constants.js';
 
-const beam = computed(() => PRESETS[store.basePreset] ?? null);
+const beam = computed(() => presetOf(store.basePreset) ?? null);
 
 const shared = [
   { key: 'dcp', label: 'δCP [°]', min: 0, max: 360, step: 1 },
