@@ -19,6 +19,12 @@ const DE = 6;
 const xOfE = (E, E0, E1) => -SX / 2 + ((E - E0) / (E1 - E0)) * SX;
 const zOfE = (E, E0, E1) => DE / 2 - ((E - E0) / (E1 - E0)) * DE;
 const zOfL = (L, Lmax) => DE / 2 - (L / Lmax) * DE;
+
+// the disk/marker's current baseline: the shared L (the animation drives it; the
+// slider moves it directly), clamped to the tube's span
+function markerL(store) {
+  return Math.min(store.L, lRangeOf(store.basePreset)[1]);
+}
 const NS = 512;                     // length samples
 const ASEG = 96, SPS = ASEG / 3, TAU = 2 * Math.PI; // angular segments; SPS per sector
 const TUBE_R = 1.1, TUBE_CY = SY / 2;
@@ -299,21 +305,18 @@ export default {
       const st = store.views.tube;
       if (st.play) st.marker = (st.marker + dt / 10) % 1; // ~10 s per sweep
       if (!eig) return;
-      let frac = st.marker; // anim = L: the marker rides the tube
-      if (st.anim !== 'L') {
-        // anim = E / δCP: the marker drives the shared slider (tube morphs) and the
-        // disk parks at the experiment baseline, showing the composition at the detector
-        if (st.marker !== lastMarker) {
-          if (st.anim === 'E') {
-            const [v0, v1] = eRangeOf(store.basePreset);
-            store.E = Math.round((v0 + st.marker * (v1 - v0)) * 100) / 100;
-          } else {
-            store.dcp = Math.round(st.marker * 360);
-          }
-        }
-        frac = Math.max(0, Math.min(1, store.L / lastLmax));
+      // the marker drives the shared slider of the chosen variable (rounded to its
+      // step); the disk always tracks the shared L, so dragging the L slider moves
+      // the disk and both 2D plots too
+      if (st.marker !== lastMarker) {
+        if (st.anim === 'L') store.L = Math.round((st.marker * lastLmax) / 5) * 5;
+        else if (st.anim === 'E') {
+          const [v0, v1] = eRangeOf(store.basePreset);
+          store.E = Math.round((v0 + st.marker * (v1 - v0)) * 100) / 100;
+        } else store.dcp = Math.round(st.marker * 360);
       }
       lastMarker = st.marker;
+      const frac = Math.max(0, Math.min(1, store.L / lastLmax));
       const L = frac * lastLmax;
       const pe = prob(eig, 1, 0, L), pm = prob(eig, 1, 1, L), pt = prob(eig, 1, 2, L);
       const sum = pe + pm + pt;
@@ -373,7 +376,6 @@ export default {
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
-      const st = store.views.tube;
       const ep = engineParams(store);
       const Lmax = lRangeOf(store.basePreset)[1];
       const eig = eigH(hamiltonian(ep, store.E, store.rho, store.anti));
@@ -401,9 +403,8 @@ export default {
       }
       P.frame(); // the stacked fills cover the frame edges
 
-      // white vertical marker line (allowed: markerDriven); tracks the 3D disk:
-      // the marker fraction in L mode, the experiment baseline in E/δCP mode
-      const mx = P.X(st.anim === 'L' ? st.marker * Lmax : Math.min(store.L, Lmax));
+      // white vertical marker line (allowed: markerDriven); tracks the 3D disk at the shared L
+      const mx = P.X(markerL(store));
       ctx.strokeStyle = theme().hiCss;
       ctx.lineWidth = dpr;
       ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
@@ -417,8 +418,10 @@ export default {
   },
 
   companion2: {
-    title: (store) => `Flavor fractions vs E at L = ${store.L} km`,
-    markerDriven: true, // repainted per frame so the white line can track an E animation
+    // spectrum at the disk's current position: the marker L in an L animation,
+    // the shared L (where the disk parks) otherwise — matches panel 1's white line
+    title: (store) => `Flavor fractions vs E at L = ${markerL(store).toFixed(0)} km`,
+    markerDriven: true, // repainted per frame so it can follow the animation
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
@@ -428,12 +431,13 @@ export default {
 
       const ep = engineParams(store);
       const [E0, E1] = eRangeOf(store.basePreset);
+      const L = markerL(store); // marker OK here: markerDriven
       const NPT = 160; // one eigH per point
       const cums = [new Float64Array(NPT), new Float64Array(NPT), new Float64Array(NPT)];
       for (let i = 0; i < NPT; i++) {
         const E = E0 + (i / (NPT - 1)) * (E1 - E0);
         const eig = eigH(hamiltonian(ep, E, store.rho, store.anti));
-        const pe = prob(eig, 1, 0, store.L), pm = prob(eig, 1, 1, store.L), pt = prob(eig, 1, 2, store.L);
+        const pe = prob(eig, 1, 0, L), pm = prob(eig, 1, 1, L), pt = prob(eig, 1, 2, L);
         cums[0][i] = pe; cums[1][i] = pe + pm; cums[2][i] = pe + pm + pt;
       }
 

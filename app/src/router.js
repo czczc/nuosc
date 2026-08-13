@@ -3,7 +3,7 @@
 // view/faq navigation — a guard syncs it into the reactive store, which the
 // components keep reading as before.
 import { createRouter, createWebHashHistory } from 'vue-router';
-import { store } from './store.js';
+import { store, applyPreset } from './store.js';
 import { VIEW_MAP } from './views/index.js';
 
 const VIEW_IDS = Object.keys(VIEW_MAP).join('|');
@@ -24,6 +24,9 @@ router.beforeEach((to) => {
   if (to.name === 'faq') {
     store.faq = to.params.section || 'engines';
   } else if (to.name === 'view') {
+    // switching to a different view starts it from the experiment's initial state
+    // (animations leave the shared sliders wherever they stopped)
+    if (to.params.view !== store.view) applyPreset(store.basePreset);
     store.view = to.params.view;
     store.faq = null;
   }

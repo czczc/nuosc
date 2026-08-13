@@ -190,13 +190,23 @@ onMounted(() => {
           a pie chart of the three possibilities at that distance: still a muon neutrino (blue), turned
           into a tau neutrino (green), or turned into an electron neutrino (red). The tube’s thickness
           never changes, because the three chances always add up to 100%. The disk rides the animation
-          marker and shows the mix at one spot; “stacked bands” unrolls the same information into a
-          stacked area chart.
+          marker and shows the mix at one spot. The tube also sits on an energy axis: drag the E slider
+          (or animate over E) and the whole tube glides along it while its pattern stretches — lower
+          energies flip flavor faster.
+        </p>
+        <p>
+          Switch the display to “stacked bands” and the same information unrolls into a box: distance
+          runs one way, beam energy the other, and at every point the red, blue, and green layers stack
+          up to exactly 1. The red carpet on the floor is the same surface the Oscillogram view shows —
+          the chance of turning into an electron neutrino — and the gap between the blue surface and the
+          box ceiling is the tau share. A translucent slice marks the current energy: it is exactly the
+          first 2D panel, standing inside the box.
         </p>
         <p>
           How to read it: most of what leaves blue goes to green — muon neutrinos mostly turn into tau
           neutrinos. The thin red wedge is the electron-neutrino appearance that experiments like DUNE
-          actually count. The 2D panel is the matching flat chart.
+          actually count. The two 2D panels are the matching flat charts: the mix along the beamline at
+          the chosen energy, and the mix across energies at the disk's current position.
         </p>
         <p><button class="linkish" @click="openView('tube')">open this view →</button></p>
       </section>
