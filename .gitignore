@@ -58,3 +58,6 @@ dist/
 .env
 .env.*
 .idea/
+# app image assets (exempt from the global *.png rule above)
+!app/src/assets/*.png
+!app/public/*.png

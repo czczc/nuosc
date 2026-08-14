@@ -11,6 +11,8 @@ import ViewExtras from './components/ViewExtras.vue';
 import CompanionPanel from './components/CompanionPanel.vue';
 import FaqPage from './components/FaqPage.vue';
 import ExperimentsPage from './components/ExperimentsPage.vue';
+import logoLight from './assets/logo-light.png';
+import logoDark from './assets/logo-dark.png';
 
 const presetNames = Object.keys(PRESETS);
 const PALETTE_NAMES = Object.keys(PALETTES);
@@ -19,12 +21,13 @@ const companions = (v) => [v.companion, v.companion2].filter(Boolean);
 const vs = computed(() => store.views[store.view]); // current view's play/marker state
 // the last chip names whatever isn't a built-in: "custom" tweaks or a loaded user experiment
 const extraChip = computed(() => (presetNames.includes(store.preset) ? 'custom' : store.preset));
+const logoSrc = computed(() => (store.theme === 'light' ? logoLight : logoDark));
 </script>
 
 <template>
   <div class="app">
     <header>
-      <img class="logo" src="./assets/logo.svg" alt="NuGlass" />
+      <img class="logo" :src="logoSrc" alt="NuGlass" />
       <nav class="tabs" aria-label="View">
         <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id && !store.faq && !store.exps }"
           @click="router.push('/' + v.id)">
