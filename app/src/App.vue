@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { store, applyPreset, setTheme } from './store.js';
 import { router } from './router.js';
 import { PRESETS } from './engines/constants.js';
-import { PALETTES } from './three/SceneBase.js';
 import { VIEWS, VIEW_MAP } from './views/index.js';
 import StageHost from './components/StageHost.vue';
 import ControlsCard from './components/ControlsCard.vue';
@@ -15,7 +14,6 @@ import logoLight from './assets/logo-light.png';
 import logoDark from './assets/logo-dark.png';
 
 const presetNames = Object.keys(PRESETS);
-const PALETTE_NAMES = Object.keys(PALETTES);
 
 const companions = (v) => [v.companion, v.companion2].filter(Boolean);
 const vs = computed(() => store.views[store.view]); // current view's play/marker state
@@ -52,9 +50,6 @@ const logoSrc = computed(() => (store.theme === 'light' ? logoLight : logoDark))
             @keydown.enter="router.push(store.exps ? '/' + store.view : '/experiments')">+</span>
         </div>
         <div class="group" role="group" aria-label="Display">
-          <select v-model="store.palette" class="palette" aria-label="Color palette" title="color palette">
-            <option v-for="p in PALETTE_NAMES" :key="p" :value="p">{{ p }}</option>
-          </select>
           <button class="themebtn" :title="store.theme === 'dark' ? 'switch to light mode' : 'switch to dark mode'"
             @click="setTheme(store.theme === 'dark' ? 'light' : 'dark')">
             {{ store.theme === 'dark' ? '☀' : '☾' }}
@@ -140,17 +135,6 @@ header {
   padding: 0; cursor: pointer;
 }
 .themebtn:hover { color: var(--accent); }
-.palette {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--muted);
-  background: transparent;
-  border: none;
-  border-radius: 999px;
-  padding: 3px 8px;
-  cursor: pointer;
-}
-.palette:hover { color: var(--text); }
 .tabs button.on { color: var(--accent); font-weight: 600; }
 .tabs button.on::after {
   content: '';

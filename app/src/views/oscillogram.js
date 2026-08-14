@@ -23,11 +23,20 @@ export default {
   label: 'Oscillogram',
   extras: [
     {
-      key: 'axis2', type: 'select', label: 'z axis',
+      key: 'axis2', type: 'select', label: '2nd axis',
       options: [
-        { value: 'L', label: 'L [0 – 2×baseline km]' },
+        { value: 'L', label: (store) => `L [0–${lRangeOf(store.basePreset)[1]} km]` },
         { value: 'dcp', label: 'δCP [0–360°]' },
         { value: 'rho', label: 'ρ [0–5 g/cm³]' },
+      ],
+    },
+    {
+      key: 'palette', type: 'select', label: 'palette',
+      options: [
+        { value: 'rainbow', label: 'rainbow' },
+        { value: 'viridis', label: 'viridis' },
+        { value: 'coolwarm', label: 'cool–warm' },
+        { value: 'grayscale', label: 'grayscale' },
       ],
     },
     {
@@ -84,8 +93,9 @@ export default {
 
       // the surface doesn't depend on the swept variable's held value — skip the
       // rebuild when only that slider moved (e.g. play sweeping L with z axis = L)
-      const palette = PALETTES[store.palette] ?? PALETTES.rainbow;
-      const surfKey = JSON.stringify([ep, E_MIN, E_MAX, axis2, a2min, a2max, anti, store.palette, { ...held, [axis2]: 0 }]);
+      const paletteName = store.views.oscillogram.palette;
+      const palette = PALETTES[paletteName] ?? PALETTES.rainbow;
+      const surfKey = JSON.stringify([ep, E_MIN, E_MAX, axis2, a2min, a2max, anti, paletteName, { ...held, [axis2]: 0 }]);
       if (surfKey !== lastSurfKey) {
         lastSurfKey = surfKey;
         const pos = geo.attributes.position;

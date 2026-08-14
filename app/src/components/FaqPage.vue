@@ -77,8 +77,8 @@ onMounted(() => {
           neutrino has turned into an electron neutrino by the time it is detected. Left-to-right is the
           neutrino’s energy E; the depth axis is your choice of a second variable: the travel distance L,
           the CP phase δCP (the parameter that can make neutrinos and antineutrinos behave differently),
-          or the density ρ of the rock the beam passes through. The palette menu in the top bar changes
-          the color scale.
+          or the density ρ of the rock the beam passes through. The palette menu in the view’s side
+          panel changes the color scale.
         </p>
         <p>
           The white line is a slice through the landscape at the current slider setting, and it is

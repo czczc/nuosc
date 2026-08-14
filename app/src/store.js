@@ -28,12 +28,9 @@ export const store = reactive({
   Ye: DEFAULTS.Ye,
   showAllParams: false,
 
-  // display
-  palette: 'rainbow',
-
   // per-view state (marker is a 0..1 fraction of the swept range)
   views: {
-    oscillogram: { axis2: 'L', anim: 'dcp', play: true, marker: 0.5 },
+    oscillogram: { axis2: 'L', anim: 'dcp', palette: 'rainbow', play: true, marker: 0.5 },
     tube: { mode: 'tube', anim: 'L', play: true, marker: 0.25 },
     sphere: { sweep: 'L', pole: 'both', play: true, marker: 0 },
     phasors: { xaxis: 'L', channel: 'e', play: true, marker: 0 },

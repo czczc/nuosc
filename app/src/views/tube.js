@@ -117,7 +117,10 @@ export default {
     tubeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TUBE_NV * 3), 3));
     tubeGeo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(TUBE_NV * 3), 3));
     tubeGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TUBE_NV * 3), 3));
-    const tubeMesh = new THREE.Mesh(tubeGeo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    // Translucent so the marker disk stays visible where the tube would occlude it.
+    const tubeMesh = new THREE.Mesh(tubeGeo, new THREE.MeshLambertMaterial({
+      vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.65, depthWrite: false,
+    }));
     base.scene.add(tubeMesh);
 
     const ringPrev = new Float64Array(ASEG + 1), ringCur = new Float64Array(ASEG + 1);

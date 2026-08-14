@@ -15,7 +15,7 @@ export function viridis(t) {
   return [a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1]), a[2] + f * (b[2] - a[2])];
 }
 
-// Global color palettes (store.palette), t in [0,1] -> [r,g,b] in [0,1].
+// Color palettes (store.views.oscillogram.palette), t in [0,1] -> [r,g,b] in [0,1].
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 // classic jet-style rainbow: blue (low) -> cyan -> green -> yellow -> red (high)

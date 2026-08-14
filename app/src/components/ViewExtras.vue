@@ -10,7 +10,8 @@ function fmt(v, step) {
   return Number(v).toFixed(prec);
 }
 
-// range extras may give min/max as (store) => value, e.g. preset-dependent E spans
+// range extras may give min/max as (store) => value, e.g. preset-dependent E spans;
+// select options may likewise give label as (store) => string
 function lim(v) {
   return typeof v === 'function' ? v(store) : v;
 }
@@ -26,7 +27,7 @@ function lim(v) {
       <div v-if="e.type === 'select'" class="ctl-row">
         <label :for="'x-' + e.key">{{ e.label }}</label>
         <select :id="'x-' + e.key" v-model="vs[e.key]">
-          <option v-for="o in e.options" :key="o.value" :value="o.value">{{ o.label }}</option>
+          <option v-for="o in e.options" :key="o.value" :value="o.value">{{ lim(o.label) }}</option>
         </select>
       </div>
       <div v-else-if="e.type === 'checkbox'" class="ctl-row">
