@@ -74,8 +74,8 @@ export function eRangeOf(preset) {
   return presetOf(preset)?.Erange ?? E_RANGE_DEFAULT;
 }
 
-// Channels an experiment measures; user experiments without a declaration
-// measure everything (github.com/czczc/nuglass/issues/15 adds the declaration).
+// Channels an experiment measures; user experiments saved before the channel
+// declaration existed measure everything.
 export function channelsOf(preset) {
   return presetOf(preset)?.channels ?? Object.keys(CHANNELS);
 }

@@ -1,7 +1,10 @@
 // User-defined experiments: a reactive name -> definition map persisted in
 // localStorage and mirrored into USER_PRESETS so the preset machinery
 // (applyPreset, lRangeOf/eRangeOf, the reset button) resolves them like built-ins.
-// Definition shape: { L, rho, Emin, Emax, Epeak, th12, th13, th23, dm21, dm31, dcp, Ye }.
+// Definition shape: { L, rho, Emin, Emax, Epeak, channels, anti,
+//                     th12, th13, th23, dm21, dm31, dcp, Ye }.
+// channels (CHANNELS keys) may be absent on experiments saved before it existed —
+// channelsOf then falls back to "measures everything".
 import { reactive } from 'vue';
 import { USER_PRESETS } from './engines/constants.js';
 
@@ -14,6 +17,8 @@ function sync() {
   for (const [name, d] of Object.entries(userExps)) {
     USER_PRESETS[name] = {
       L: d.L, rho: d.rho, Erange: [d.Emin, d.Emax], Epeak: d.Epeak,
+      channels: d.channels, // undefined = pre-channels save -> measures everything
+      anti: d.anti ?? false,
       params: { th12: d.th12, th13: d.th13, th23: d.th23, dm21: d.dm21, dm31: d.dm31, dcp: d.dcp, Ye: d.Ye },
     };
   }

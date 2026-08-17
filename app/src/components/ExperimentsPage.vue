@@ -2,14 +2,15 @@
 import { computed, reactive, ref } from 'vue';
 import { store, applyPreset } from '../store.js';
 import { router } from '../router.js';
-import { DEFAULTS, PRESETS } from '../engines/constants.js';
+import { DEFAULTS, PRESETS, CHANNELS, channelLabel } from '../engines/constants.js';
 import { userExps, saveUserExp, deleteUserExp } from '../experiments.js';
 
-// form starts from DUNE's setup and the NuFit 6.1 global fit
+// form starts from DUNE's setup and the NuFit 6.1 global fit; all channels checked
 const blank = () => ({
   name: '',
   L: PRESETS.DUNE.L, rho: PRESETS.DUNE.rho,
   Emin: PRESETS.DUNE.Erange[0], Emax: PRESETS.DUNE.Erange[1], Epeak: PRESETS.DUNE.Epeak,
+  channels: Object.keys(CHANNELS), anti: false,
   th12: DEFAULTS.th12, th13: DEFAULTS.th13, th23: DEFAULTS.th23,
   dm21: DEFAULTS.dm21, dm31: DEFAULTS.dm31, dcp: DEFAULTS.dcp, Ye: DEFAULTS.Ye,
 });
@@ -45,6 +46,7 @@ function validate() {
   if (f.L <= 0) return 'L must be positive';
   if (!(f.Emin > 0 && f.Emax > f.Emin)) return 'need 0 < E min < E max';
   if (f.Epeak < f.Emin || f.Epeak > f.Emax) return 'E peak must lie inside the E range';
+  if (!f.channels.length) return 'pick at least one channel the experiment measures';
   return '';
 }
 
@@ -53,6 +55,7 @@ function save() {
   if (err.value) return;
   const name = f.name.trim();
   const { name: _, ...def } = f;
+  def.channels = [...f.channels]; // detach from the form's reactive array
   saveUserExp(name, def);
   savedFlash.value = name;
   setTimeout(() => { savedFlash.value = ''; }, 1500);
@@ -64,8 +67,16 @@ function load(name) {
 }
 
 function edit(name) {
-  Object.assign(f, userExps[name], { name });
+  // blank() first: experiments saved before channels/anti existed keep the defaults
+  Object.assign(f, blank(), userExps[name], { name });
+  f.channels = [...f.channels]; // detach from the saved definition's array
   err.value = '';
+}
+
+// summary line for a saved experiment's channels
+function chanSummary(d) {
+  const chs = d.channels ?? Object.keys(CHANNELS);
+  return chs.length === Object.keys(CHANNELS).length ? 'all channels' : chs.map(channelLabel).join(' ');
 }
 
 function del(name) {
@@ -84,11 +95,12 @@ function resetForm() {
     <article class="doc">
       <h2>My experiments</h2>
       <p class="sub">
-        Define your own setup (baseline, matter density, beam energy window, and optionally your own
-        oscillation parameters) and save it under a name. Saved experiments are kept in this browser's
-        storage and can be loaded here any time; loading one makes it the active experiment everywhere
-        (sliders, sweep ranges, the reset ↺ button). The form starts from DUNE's numbers and the
-        NuFit 6.1 global fit.
+        Define your own setup (baseline, matter density, energy window, which oscillation channels it
+        measures, and optionally your own oscillation parameters) and save it under a name. Saved
+        experiments are kept in this browser's storage and can be loaded here any time; loading one
+        makes it the active experiment everywhere (sliders, sweep ranges, the reset ↺ button); switching
+        the channel rail to a channel it doesn't measure falls back to a built-in experiment. The form
+        starts from DUNE's numbers and the NuFit 6.1 global fit.
       </p>
 
       <section>
@@ -100,6 +112,17 @@ function resetForm() {
             <label :for="'exp-' + r.key">{{ r.label }}</label>
             <input :id="'exp-' + r.key" v-model.number="f[r.key]" type="number" step="any" />
           </template>
+        </div>
+        <div class="chanrow">
+          <label>channels measured</label>
+          <span class="checks">
+            <label v-for="(c, id) in CHANNELS" :key="id" class="check">
+              <input v-model="f.channels" type="checkbox" :value="id" /> {{ channelLabel(id) }}
+            </label>
+            <label class="check">
+              <input v-model="f.anti" type="checkbox" /> ν̄ source (reactor-like: loads with the particle toggle on ν̄)
+            </label>
+          </span>
         </div>
         <h4>oscillation parameters</h4>
         <div class="grid">
@@ -124,7 +147,8 @@ function resetForm() {
             <span class="sum">
               L {{ userExps[n].L }} km · ρ {{ userExps[n].rho }} g/cm³ ·
               E {{ userExps[n].Emin }}–{{ userExps[n].Emax }} GeV (peak {{ userExps[n].Epeak }}) ·
-              δCP {{ userExps[n].dcp }}°
+              δCP {{ userExps[n].dcp }}° ·
+              {{ chanSummary(userExps[n]) }}<template v-if="userExps[n].anti"> · ν̄ source</template>
             </span>
           </div>
           <span class="acts">
@@ -194,6 +218,32 @@ h4 {
   font-size: 13px;
 }
 .grid input:focus { outline: none; border-color: var(--accent); }
+.chanrow {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin-top: 10px;
+}
+.chanrow > label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  flex: none;
+}
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+}
+.check input { accent-color: var(--accent); margin: 0; }
 .err { color: #e05545; font-family: var(--font-mono); font-size: 13px; }
 .btnrow { display: flex; gap: 10px; margin-top: 14px; }
 button {
