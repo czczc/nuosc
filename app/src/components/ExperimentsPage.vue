@@ -18,13 +18,32 @@ const f = reactive(blank());
 const err = ref('');
 const savedFlash = ref('');
 
-const expRows = [
-  { key: 'L', label: 'baseline L [km]' },
-  { key: 'rho', label: 'density ρ [g/cm³]' },
-  { key: 'Emin', label: 'E min [GeV]' },
-  { key: 'Emax', label: 'E max [GeV]' },
-  { key: 'Epeak', label: 'E peak [GeV]' },
-];
+// Input units for the E and L fields: GeV·km (default) or MeV·m for reactor-scale
+// setups. f always holds GeV/km — the toggle only converts what the inputs show,
+// mirroring the app's axis rule (eUnitOf: MeV when the window tops out < 0.05 GeV).
+const units = ref('GeV');
+const SCALED = new Set(['L', 'Emin', 'Emax', 'Epeak']); // ×1000 in MeV·m mode
+const scale = computed(() => (units.value === 'MeV' ? 1000 : 1));
+function dispVal(key) {
+  const v = f[key];
+  return SCALED.has(key) && Number.isFinite(v) ? +(v * scale.value).toPrecision(12) : v;
+}
+function setVal(key, ev) {
+  const v = ev.target.valueAsNumber;
+  f[key] = SCALED.has(key) && Number.isFinite(v) ? v / scale.value : v;
+}
+
+const expRows = computed(() => {
+  const [uE, uL] = units.value === 'MeV' ? ['MeV', 'm'] : ['GeV', 'km'];
+  return [
+    { key: 'L', label: `baseline L [${uL}]` },
+    { key: 'rho', label: 'density ρ [g/cm³]' },
+    { key: 'Emin', label: `E min [${uE}]` },
+    { key: 'Emax', label: `E max [${uE}]` },
+    { key: 'Epeak', label: `E peak [${uE}]` },
+  ];
+});
+const EXP_KEYS = ['L', 'rho', 'Emin', 'Emax', 'Epeak'];
 const oscRows = [
   { key: 'th12', label: 'θ₁₂ [°]' },
   { key: 'th13', label: 'θ₁₃ [°]' },
@@ -34,7 +53,7 @@ const oscRows = [
   { key: 'dcp', label: 'δCP [°]' },
   { key: 'Ye', label: 'electron fraction Yₑ' },
 ];
-const NUM_KEYS = [...expRows, ...oscRows].map((r) => r.key);
+const NUM_KEYS = [...EXP_KEYS, ...oscRows.map((r) => r.key)];
 
 const names = computed(() => Object.keys(userExps).sort());
 
@@ -70,6 +89,7 @@ function edit(name) {
   // blank() first: experiments saved before channels/anti existed keep the defaults
   Object.assign(f, blank(), userExps[name], { name });
   f.channels = [...f.channels]; // detach from the saved definition's array
+  units.value = f.Emax < 0.05 ? 'MeV' : 'GeV'; // same threshold as the app's axes
   err.value = '';
 }
 
@@ -86,7 +106,18 @@ function del(name) {
 
 function resetForm() {
   Object.assign(f, blank());
+  units.value = 'GeV';
   err.value = '';
+}
+
+// saved-experiment summaries follow the same unit rule as the app's axes
+function fmtSumE(d) {
+  const s = d.Emax < 0.05 ? 1000 : 1, u = s === 1000 ? 'MeV' : 'GeV';
+  const n = (v) => +(v * s).toPrecision(6);
+  return `E ${n(d.Emin)}–${n(d.Emax)} ${u} (peak ${n(d.Epeak)})`;
+}
+function fmtSumL(d) {
+  return d.L < 1 ? `L ${+(d.L * 1000).toPrecision(6)} m` : `L ${d.L} km`;
 }
 </script>
 
@@ -105,12 +136,20 @@ function resetForm() {
 
       <section>
         <h3>{{ userExps[f.name.trim()] ? `edit “${f.name.trim()}”` : 'new experiment' }}</h3>
+        <div class="chanrow">
+          <label>input units</label>
+          <span class="seg">
+            <button :class="{ on: units === 'GeV' }" @click="units = 'GeV'">GeV · km</button>
+            <button :class="{ on: units === 'MeV' }" @click="units = 'MeV'">MeV · m</button>
+          </span>
+        </div>
         <div class="grid">
           <label for="exp-name">name</label>
           <input id="exp-name" v-model="f.name" type="text" placeholder="e.g. ESSnuSB" />
           <template v-for="r in expRows" :key="r.key">
             <label :for="'exp-' + r.key">{{ r.label }}</label>
-            <input :id="'exp-' + r.key" v-model.number="f[r.key]" type="number" step="any" />
+            <input :id="'exp-' + r.key" type="number" step="any" :value="dispVal(r.key)"
+              @input="setVal(r.key, $event)" />
           </template>
         </div>
         <div class="chanrow">
@@ -145,8 +184,8 @@ function resetForm() {
           <div class="meta">
             <strong>{{ n }}</strong>
             <span class="sum">
-              L {{ userExps[n].L }} km · ρ {{ userExps[n].rho }} g/cm³ ·
-              E {{ userExps[n].Emin }}–{{ userExps[n].Emax }} GeV (peak {{ userExps[n].Epeak }}) ·
+              {{ fmtSumL(userExps[n]) }} · ρ {{ userExps[n].rho }} g/cm³ ·
+              {{ fmtSumE(userExps[n]) }} ·
               δCP {{ userExps[n].dcp }}° ·
               {{ chanSummary(userExps[n]) }}<template v-if="userExps[n].anti"> · ν̄ source</template>
             </span>
@@ -222,7 +261,7 @@ h4 {
   display: flex;
   gap: 12px;
   align-items: baseline;
-  margin-top: 10px;
+  margin: 10px 0;
 }
 .chanrow > label {
   font-family: var(--font-mono);
