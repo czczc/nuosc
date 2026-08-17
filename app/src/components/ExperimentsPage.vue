@@ -104,9 +104,15 @@ function del(name) {
   if (store.basePreset === name) applyPreset('DUNE'); // don't leave the app on a deleted preset
 }
 
-function resetForm() {
-  Object.assign(f, blank());
-  units.value = 'GeV';
+// reset the setup fields to a built-in preset (channels/anti included);
+// oscillation parameters go back to the NuFit defaults via blank()
+function resetForm(presetName = 'DUNE') {
+  const p = PRESETS[presetName];
+  Object.assign(f, blank(), {
+    L: p.L, rho: p.rho, Emin: p.Erange[0], Emax: p.Erange[1], Epeak: p.Epeak,
+    channels: [...p.channels], anti: p.anti ?? false,
+  });
+  units.value = p.Erange[1] < 0.05 ? 'MeV' : 'GeV'; // same threshold as the app's axes
   err.value = '';
 }
 
@@ -173,7 +179,8 @@ function fmtSumL(d) {
         <p v-if="err" class="err">{{ err }}</p>
         <p class="btnrow">
           <button class="primary" @click="save">{{ savedFlash ? 'saved ✓' : 'save' }}</button>
-          <button @click="resetForm">reset form to DUNE defaults</button>
+          <button @click="resetForm()">reset form to DUNE defaults</button>
+          <button @click="resetForm('JUNO')">reset form to JUNO defaults</button>
         </p>
       </section>
 
