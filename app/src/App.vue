@@ -1,8 +1,8 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { store, applyPreset, setTheme, setChannel } from './store.js';
 import { router } from './router.js';
-import { PRESETS, CHANNELS, channelLabel } from './engines/constants.js';
+import { PRESETS, CHANNELS, channelLabel, channelsOf } from './engines/constants.js';
 import { VIEWS, VIEW_MAP } from './views/index.js';
 import StageHost from './components/StageHost.vue';
 import ControlsCard from './components/ControlsCard.vue';
@@ -27,6 +27,28 @@ const isCustom = computed(() => store.preset === 'custom');
 const chipTitle = (p) => (isCustom.value && store.basePreset === p
   ? `parameters modified — click to reset to ${p} defaults` : p);
 const logoSrc = computed(() => (store.theme === 'light' ? logoLight : logoDark));
+
+// channel rail: chips the active experiment doesn't measure are dimmed, and
+// their tooltip warns about the experiment switch the click would trigger
+const chanDim = (c) => !channelsOf(store.basePreset).includes(c);
+function chanTitle(c) {
+  if (!chanDim(c)) return null;
+  const fb = Object.keys(PRESETS).find((n) => PRESETS[n].channels.includes(c));
+  if (!fb) return null;
+  const p = PRESETS[fb];
+  return `not measured at ${store.basePreset} — switches to ${fb} (${p.anti ? 'reactor ν̄, ' : ''}L = ${p.L} km)`;
+}
+// when a channel click forces an experiment switch, pulse the new chip
+const flashing = ref('');
+function pickChannel(c) {
+  const before = store.basePreset;
+  setChannel(c);
+  if (store.basePreset !== before) {
+    flashing.value = ''; // retrigger the CSS animation on repeat switches
+    requestAnimationFrame(() => { flashing.value = store.basePreset; });
+    setTimeout(() => { flashing.value = ''; }, 2000);
+  }
+}
 </script>
 
 <template>
@@ -39,23 +61,25 @@ const logoSrc = computed(() => (store.theme === 'light' ? logoLight : logoDark))
           {{ v.label }}
         </button>
       </nav>
-      <div class="group" role="group" aria-label="Channel">
-        <span v-for="c in channelIds" :key="c" class="chip" :class="{ on: store.channel === c }" role="button"
-          tabindex="0" @click="setChannel(c)" @keydown.enter="setChannel(c)">{{ channelLabel(c) }}</span>
+      <div v-if="!store.faq && !store.exps" class="group" role="group" aria-label="Animation">
+        <button class="navbtn play" :title="vs.play ? 'pause' : 'play'" @click="vs.play = !vs.play">
+          {{ vs.play ? '❚❚' : '▶' }}
+        </button>
+        <button class="navbtn" title="reset to experiment defaults" @click="applyPreset(store.basePreset)">
+          ↺
+        </button>
       </div>
       <div class="right">
-        <div v-if="!store.faq && !store.exps" class="group" role="group" aria-label="Animation">
-          <button class="navbtn play" :title="vs.play ? 'pause' : 'play'" @click="vs.play = !vs.play">
-            {{ vs.play ? '❚❚' : '▶' }}
-          </button>
-          <button class="navbtn" title="reset to experiment defaults" @click="applyPreset(store.basePreset)">
-            ↺
-          </button>
+        <div class="group" role="group" aria-label="Channel">
+          <span v-for="c in channelIds" :key="c" class="chip" :class="{ on: store.channel === c, dim: chanDim(c) }"
+            role="button" tabindex="0" :title="chanTitle(c)" @click="pickChannel(c)"
+            @keydown.enter="pickChannel(c)">{{ channelLabel(c) }}</span>
         </div>
+        <span class="vsep" aria-hidden="true"></span>
         <div class="group" role="group" aria-label="Experiment">
           <span v-for="p in [...presetNames, ...(userChip ? [userChip] : [])]" :key="p" class="chip"
-            :class="{ on: store.basePreset === p, custom: isCustom && store.basePreset === p }" role="button"
-            tabindex="0" :title="chipTitle(p)" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">
+            :class="{ on: store.basePreset === p, custom: isCustom && store.basePreset === p, flash: flashing === p }"
+            role="button" tabindex="0" :title="chipTitle(p)" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">
             {{ p }}{{ isCustom && store.basePreset === p ? '*' : '' }}</span>
           <span class="chip" :class="{ on: store.exps }" role="button" tabindex="0" title="define your own experiment"
             @click="router.push(store.exps ? '/' + store.view : '/experiments')"
@@ -127,6 +151,16 @@ header {
   color: var(--accent);
   font-weight: 700;
 }
+/* channels the active experiment doesn't measure: dimmed; the tooltip explains
+   that clicking switches experiments */
+.group .chip.dim { opacity: 0.4; }
+.group .chip.dim:hover { opacity: 0.8; }
+/* the experiment chip a channel click just switched to: expanding ring pulse */
+.group .chip.flash { animation: chip-flash 0.9s ease-out 2; }
+@keyframes chip-flash {
+  0% { box-shadow: 0 0 0 0 var(--accent); }
+  100% { box-shadow: 0 0 0 9px transparent; }
+}
 .navbtn {
   width: 26px; height: 24px;
   border: none; border-radius: 999px;
@@ -164,6 +198,9 @@ header {
 }
 .logo { height: 38px; display: block; }
 .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+/* divider between the channel and experiment groups (the pill borders alone are
+   too subtle in dark mode to read as separate controls) */
+.vsep { width: 1px; height: 22px; flex: none; background: var(--muted); opacity: 0.4; }
 main { flex: 1; display: flex; min-height: 0; }
 aside {
   width: 340px; flex: none;

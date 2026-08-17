@@ -212,10 +212,12 @@ onMounted(() => {
       </section>
 
       <section id="faq-loe">
-        <h3>L/E</h3>
+        <h3>Worldline (L/E)</h3>
         <p>
           The other views sweep distance or energy separately; this one uses the variable oscillation
-          actually depends on. In empty space, every oscillation probability is a function of the single
+          actually depends on — L/E is proportional to the proper time the neutrino itself
+          experiences, so this axis is the neutrino's own worldline, with every experiment pinned
+          somewhere along it. In empty space, every oscillation probability is a function of the single
           combination L/E — distance traveled divided by energy — so each channel collapses onto one
           universal curve, drawn here against L/E on a logarithmic axis. Both oscillation frequencies
           are visible at once: the fast atmospheric wiggle (first dip near L/E ≈ 500 km/GeV) and the
@@ -250,7 +252,7 @@ onMounted(() => {
       </section>
 
       <section id="faq-experiments">
-        <h3>My experiments</h3>
+        <h3>Custom experiments</h3>
         <p>
           The experiment chips in the top bar are presets: each sets the distance to the
           detector, the rock density along the way, and the source's energy window. The chip row

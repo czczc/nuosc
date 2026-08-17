@@ -4,7 +4,7 @@ Interactive 3D visualization of long-baseline neutrino oscillation (νμ → νe
 
 **Live site: https://czczc.github.io/nuglass/**
 
-The app offers six linked views of the same physics (an oscillogram surface, a bi-probability plot, a flavor-state sphere, an amplitude phasor diagram, a flavor-composition tube, and an L/E view with matter-effect degeneracy breaking), switchable between oscillation channels (νμ→νe, νμ→νμ, νμ→ντ, νe→νe), each with a companion 2D plot and experiment presets (DUNE, NOvA, T2K, JUNO, KamLAND, Daya Bay). Probabilities come from two independent engines: a JavaScript port of NuFast-LBL ([Denton & Parke, arXiv:2405.02400](https://arxiv.org/abs/2405.02400)) and an exact complex-Jacobi amplitude engine, cross-validated against each other. See the in-app FAQ page for the physics details.
+The app offers six linked views of the same physics (an oscillogram surface, a bi-probability plot, a flavor-state sphere, an amplitude phasor diagram, a flavor-composition tube, and a worldline (L/E) view with matter-effect degeneracy breaking), switchable between oscillation channels (νμ→νe, νμ→νμ, νμ→ντ, νe→νe), each with a companion 2D plot and experiment presets (DUNE, NOvA, T2K, JUNO, KamLAND, Daya Bay). Probabilities come from two independent engines: a JavaScript port of NuFast-LBL ([Denton & Parke, arXiv:2405.02400](https://arxiv.org/abs/2405.02400)) and an exact complex-Jacobi amplitude engine, cross-validated against each other. See the in-app FAQ page for the physics details.
 
 ## Local setup
 

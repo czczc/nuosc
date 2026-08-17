@@ -41,19 +41,29 @@ function pVac(ep, ch, x, anti) {
   return Math.max(0, Math.min(1, P[a][b]));
 }
 
-// <sin^2 D31> averaging kicks in once the atmospheric phase is unresolvably fast
-const fastPhase = (ep, x) => 1.267 * Math.abs(ep.dm31) * x > 20;
+// <sin^2 D31> averaging weight: 0 below an atmospheric phase of 15 rad, 1 above
+// 25, smoothstepped in between — a hard threshold leaves a visible step in the
+// curve where the averaging switches on
+function avgWeight(ep, x) {
+  const t = (1.267 * Math.abs(ep.dm31) * x - 15) / 10;
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  return t * t * (3 - 2 * t);
+}
 const atmPeriod = (ep) => Math.PI / (1.267 * Math.abs(ep.dm31)); // one sin^2 period in x
 
 // optional <sin^2 D31> averaging for the vacuum curves (detectors can't resolve
-// the fast wiggles at large L/E): mean over one atmospheric period in x
+// the fast wiggles at large L/E): mean over one atmospheric period in x,
+// cross-faded in over the transition window
 function pVacAvg(ep, ch, x, anti, avg) {
-  if (!avg || !fastPhase(ep, x)) return pVac(ep, ch, x, anti);
+  const w = avg ? avgWeight(ep, x) : 0;
+  if (w === 0) return pVac(ep, ch, x, anti);
   const period = atmPeriod(ep);
   let s = 0;
   const K = 9;
   for (let k = 0; k < K; k++) s += pVac(ep, ch, x + period * ((k + 0.5) / K - 0.5), anti);
-  return s / K;
+  const pa = s / K;
+  return w === 1 ? pa : (1 - w) * pVac(ep, ch, x, anti) + w * pa;
 }
 
 // matter P at a real (L, E) point, shared rho
@@ -64,16 +74,19 @@ function pMat(ep, ch, L, E, rho, anti) {
 }
 
 // matter P vs x = L/E at fixed E, ALWAYS averaged over one atmospheric period at
-// large L/E — the sheet shows what a detector with finite resolution would see.
-// K = 5 (vs 9 for the vacuum curves): the sheet rebuilds live during the ρ
-// animation, and 5 evenly spaced samples already average a sinusoid exactly.
+// large L/E (cross-faded like the curves) — the surface shows what a detector
+// with finite resolution would see. K = 5 (vs 9 for the vacuum curves): the
+// surface rebuilds live during the ρ animation, and 5 evenly spaced samples
+// already average a sinusoid exactly.
 function pMatAvg(ep, ch, x, E, rho, anti) {
-  if (!fastPhase(ep, x)) return pMat(ep, ch, x * E, E, rho, anti);
+  const w = avgWeight(ep, x);
+  if (w === 0) return pMat(ep, ch, x * E, E, rho, anti);
   const period = atmPeriod(ep);
   let s = 0;
   const K = 5;
   for (let k = 0; k < K; k++) s += pMat(ep, ch, (x + period * ((k + 0.5) / K - 0.5)) * E, E, rho, anti);
-  return s / K;
+  const pa = s / K;
+  return w === 1 ? pa : (1 - w) * pMat(ep, ch, x * E, E, rho, anti) + w * pa;
 }
 
 // companion memos: curves keyed by the physics inputs (marker excluded)
@@ -87,7 +100,7 @@ const MARKS = Object.entries(PRESETS)
 
 export default {
   id: 'loe',
-  label: 'L/E',
+  label: 'Worldline (L/E)',
   extras: [
     { key: 'cMue', type: 'checkbox', label: 'νμ→νe', lock: (s) => s.channel === 'mue' },
     { key: 'cMumu', type: 'checkbox', label: 'νμ→νμ', lock: (s) => s.channel === 'mumu' },
@@ -95,7 +108,11 @@ export default {
     { key: 'cEe', type: 'checkbox', label: 'νe→νe', lock: (s) => s.channel === 'ee' },
     { key: 'surf', type: 'checkbox', label: 'matter surface (exp. range)' },
     { key: 'exps', type: 'checkbox', label: 'experiment markers' },
-    { key: 'avg', type: 'checkbox', label: '⟨sin²Δ₃₁⟩ averaged' },
+    {
+      key: 'avg', type: 'checkbox', label: '⟨sin²Δ₃₁⟩ averaged',
+      title: 'Detector resolution can\'t follow the fast Δ₃₁ wiggles at large L/E, so they are '
+        + 'cross-faded into their average as the phase grows past ~15–25 rad.',
+    },
     {
       // the marker drives a shared slider; the white L/E cross-section always
       // tracks the experiment's live L/E point (E and L move it, ρ morphs the
@@ -170,10 +187,9 @@ export default {
     }));
     base.scene.add(sheetMesh);
 
-    // experiment markers: static dashed verticals + labels; dots follow update()
+    // experiment markers: static dashed verticals + labels at their true L/E
     const markGroup = new THREE.Group();
     base.scene.add(markGroup);
-    const markDots = {};
     MARKS.forEach((m, i) => {
       const x = xw(m.lx);
       const col = m.reactor ? CH_COLOR.ee : theme().axis;
@@ -187,10 +203,6 @@ export default {
       const s = textSprite(m.name, 0.8, m.reactor ? CH_COLOR.ee : undefined);
       s.position.set(x, SY + 0.28 + (i % 4) * 0.3, ZF);
       markGroup.add(s);
-      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12),
-        new THREE.MeshBasicMaterial({ color: new THREE.Color(col) }));
-      markGroup.add(dot);
-      markDots[m.name] = dot;
     });
 
     // marker slice: vertical line + dot on the focus curve, plus the fixed-L/E
@@ -246,11 +258,6 @@ export default {
         focusTube.geometry.dispose();
         focusTube.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(focusPts), 1024, 0.025, 6, false);
         focusTube.material.color.set(CH_COLOR[focus]);
-
-        // experiment markers: dots ride the focus vacuum curve
-        for (const m of MARKS) {
-          markDots[m.name].position.set(xw(m.lx), pVac(ep, focus, 10 ** m.lx, anti) * SY, ZF);
-        }
       }
 
       // matter surface for the focus channel over (log L/E, E) at the shared rho,

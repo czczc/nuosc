@@ -30,7 +30,7 @@ function lim(v) {
           <option v-for="o in e.options" :key="o.value" :value="o.value">{{ lim(o.label) }}</option>
         </select>
       </div>
-      <div v-else-if="e.type === 'checkbox'" class="ctl-row">
+      <div v-else-if="e.type === 'checkbox'" class="ctl-row" :title="e.title || null">
         <label :for="'x-' + e.key">{{ e.label }}</label>
         <!-- lock: (store) => bool — checkbox forced on and disabled (e.g. the header channel) -->
         <input :id="'x-' + e.key" type="checkbox" :checked="vs[e.key] || (e.lock ? lim(e.lock) : false)"

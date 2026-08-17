@@ -37,7 +37,7 @@ export const store = reactive({
     phasors: { xaxis: 'L', play: true, marker: 0 },
     biprob: { showNO: true, showIO: true, showSurf: false, anim: 'E', play: true, marker: 0.5 },
     loe: {
-      cMue: true, cMumu: true, cMutau: false, cEe: true, surf: true, exps: true, avg: false,
+      cMue: true, cMumu: true, cMutau: false, cEe: true, surf: true, exps: true, avg: true,
       anim: 'dcp', play: true, marker: 0.5,
     },
   },
