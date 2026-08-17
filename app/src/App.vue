@@ -20,8 +20,12 @@ const presetNames = computed(() =>
 
 const companions = (v) => [v.companion, v.companion2].filter(Boolean);
 const vs = computed(() => store.views[store.view]); // current view's play/marker state
-// the last chip names whatever isn't a built-in: "custom" tweaks or a loaded user experiment
-const extraChip = computed(() => (PRESETS[store.preset] ? 'custom' : store.preset));
+// a loaded user experiment gets its own chip after the built-ins
+const userChip = computed(() => (PRESETS[store.basePreset] ? null : store.basePreset));
+// tweaked sliders restyle the active chip instead of showing a separate "custom" chip
+const isCustom = computed(() => store.preset === 'custom');
+const chipTitle = (p) => (isCustom.value && store.basePreset === p
+  ? `parameters modified — click to reset to ${p} defaults` : p);
 const logoSrc = computed(() => (store.theme === 'light' ? logoLight : logoDark));
 </script>
 
@@ -49,9 +53,10 @@ const logoSrc = computed(() => (store.theme === 'light' ? logoLight : logoDark))
           </button>
         </div>
         <div class="group" role="group" aria-label="Experiment">
-          <span v-for="p in presetNames" :key="p" class="chip" :class="{ on: store.preset === p }" role="button"
-            tabindex="0" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">{{ p }}</span>
-          <span class="chip" :class="{ on: store.preset === extraChip }">{{ extraChip }}</span>
+          <span v-for="p in [...presetNames, ...(userChip ? [userChip] : [])]" :key="p" class="chip"
+            :class="{ on: store.basePreset === p, custom: isCustom && store.basePreset === p }" role="button"
+            tabindex="0" :title="chipTitle(p)" @click="applyPreset(p)" @keydown.enter="applyPreset(p)">
+            {{ p }}{{ isCustom && store.basePreset === p ? '*' : '' }}</span>
           <span class="chip" :class="{ on: store.exps }" role="button" tabindex="0" title="define your own experiment"
             @click="router.push(store.exps ? '/' + store.view : '/experiments')"
             @keydown.enter="router.push(store.exps ? '/' + store.view : '/experiments')">+</span>
@@ -115,6 +120,13 @@ header {
 }
 .group .chip { border-color: transparent; background: transparent; }
 .group .chip.on { background: var(--accent); border-color: var(--accent); }
+/* active experiment with tweaked parameters: hollow + dashed, until reset/reapplied */
+.group .chip.on.custom {
+  background: transparent;
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
 .navbtn {
   width: 26px; height: 24px;
   border: none; border-radius: 999px;
