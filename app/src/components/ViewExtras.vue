@@ -32,7 +32,9 @@ function lim(v) {
       </div>
       <div v-else-if="e.type === 'checkbox'" class="ctl-row">
         <label :for="'x-' + e.key">{{ e.label }}</label>
-        <input :id="'x-' + e.key" v-model="vs[e.key]" type="checkbox" />
+        <!-- lock: (store) => bool — checkbox forced on and disabled (e.g. the header channel) -->
+        <input :id="'x-' + e.key" type="checkbox" :checked="vs[e.key] || (e.lock ? lim(e.lock) : false)"
+          :disabled="e.lock ? lim(e.lock) : false" @change="vs[e.key] = $event.target.checked" />
       </div>
       <div v-else-if="e.type === 'range'" class="ctl-row">
         <label :for="'x-' + e.key">{{ e.label }}</label>

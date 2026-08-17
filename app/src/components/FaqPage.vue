@@ -36,7 +36,7 @@ onMounted(() => {
       <h2>FAQ</h2>
       <p class="sub">
         NuGlass is an interactive picture of neutrino oscillation: the strange way neutrinos change
-        from one type to another as they travel. Five 3D views, each paired with live 2D plots.
+        from one type to another as they travel. Six 3D views, each paired with live 2D plots.
         This page explains what each view shows and how the numbers behind it are computed.
       </p>
 
@@ -209,6 +209,44 @@ onMounted(() => {
           the chosen energy, and the mix across energies at the disk's current position.
         </p>
         <p><button class="linkish" @click="openView('tube')">open this view →</button></p>
+      </section>
+
+      <section id="faq-loe">
+        <h3>L/E</h3>
+        <p>
+          The other views sweep distance or energy separately; this one uses the variable oscillation
+          actually depends on. In empty space, every oscillation probability is a function of the single
+          combination L/E — distance traveled divided by energy — so each channel collapses onto one
+          universal curve, drawn here against L/E on a logarithmic axis. Both oscillation frequencies
+          are visible at once: the fast atmospheric wiggle (first dip near L/E ≈ 500 km/GeV) and the
+          slow solar valley (near L/E ≈ 15,000 km/GeV) with the fast wiggle riding on top of it.
+          The dashed markers pin real experiments at their own L/E: Daya Bay, NOvA, T2K and DUNE all
+          cluster around the first atmospheric dip — measured with very different distances and energies
+          but nearly the same L/E — while JUNO sits on the solar valley and KamLAND beyond it. The thick
+          curve is the channel selected in the header; the checkboxes overlay the others.
+        </p>
+        <p>
+          The third axis shows what breaks this elegant collapse: matter. Traveling through rock adds
+          an effect that grows with energy E itself, not with L/E, so two neutrinos with the same L/E
+          but different energies no longer oscillate identically. The colored surface (drawn like the
+          Oscillogram view) spreads the header channel across the experiment's reach — its energy
+          window, with baselines up to twice the experiment's — computed with the matter effect at the
+          current density ρ: at ρ = 0 the surface is perfectly flat along the energy axis (the front
+          view reproduces the vacuum curve exactly), and as ρ grows it twists — each energy pulls away
+          from the vacuum curve by a different amount. Drag the ρ slider to zero and watch the degeneracy
+          restore itself. The effect is largest for νμ→νe near beam energies (this is how DUNE tells
+          the mass ordering) and utterly negligible for reactor ν̄e at MeV energies, which is why
+          reactor experiments are the clean, vacuum-like measurement. The white slice always sits at
+          the experiment's current L/E (from the shared L and E sliders); its profile across the
+          surface is the matter spread at that L/E. The second 2D panel is the spectrum the
+          experiment actually measures — P vs E at the current baseline and density, matter effect
+          included, with the vacuum curve dashed for comparison. The animate menu sweeps E or L
+          (walking the L/E point along the axis), the CP phase, or the density ρ itself, morphing
+          the whole surface.
+          (The surface assumes constant density along the whole path — a toy for pedagogy, like the
+          shared ρ slider itself.)
+        </p>
+        <p><button class="linkish" @click="openView('loe')">open this view →</button></p>
       </section>
 
       <section id="faq-experiments">

@@ -29,6 +29,7 @@ import tube from './tube.js';
 import sphere from './sphere.js';
 import phasors from './phasors.js';
 import biprob from './biprob.js';
+import loe from './loe.js';
 
-export const VIEWS = [oscillogram, biprob, sphere, phasors, tube];
+export const VIEWS = [oscillogram, biprob, sphere, phasors, tube, loe];
 export const VIEW_MAP = Object.fromEntries(VIEWS.map((v) => [v.id, v]));

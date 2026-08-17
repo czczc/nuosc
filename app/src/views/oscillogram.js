@@ -50,6 +50,7 @@ export default {
           { value: 'L', label: 'L' },
           { value: 'E', label: 'E' },
           { value: 'dcp', label: 'δCP' },
+          { value: 'rho', label: 'ρ' },
         ],
       },
     },
@@ -165,11 +166,12 @@ export default {
       if (vs.play) vs.marker = (vs.marker + dt / LOOP_S) % 1;
       if (vs.marker !== lastMarker) {
         const [v0, v1] = vs.anim === 'L' ? lRangeOf(store.basePreset)
-          : vs.anim === 'E' ? eRangeOf(store.basePreset) : RANGES.dcp;
+          : vs.anim === 'E' ? eRangeOf(store.basePreset) : RANGES[vs.anim];
         const v = v0 + vs.marker * (v1 - v0);
         // rounded to the shared sliders' steps
         if (vs.anim === 'L') { const s = lStepOf(store.basePreset); store.L = Math.round(v / s) * s; }
         else if (vs.anim === 'E') { const s = eStepOf(store.basePreset); store.E = Math.round(v / s) * s; }
+        else if (vs.anim === 'rho') store.rho = Math.round(v / 0.05) * 0.05;
         else store.dcp = Math.round(v);
       }
       lastMarker = vs.marker;
