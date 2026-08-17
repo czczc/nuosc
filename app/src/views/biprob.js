@@ -1,29 +1,33 @@
-// Biprobability (Minakata-Nunokawa): P(numu->nue) vs P(antinumu->antinue), delta-CP rings
+// Biprobability (Minakata-Nunokawa): P vs P̄ for the shared channel, delta-CP rings
 // stacked over E for both mass orderings. NuFast engine. Ported from the validated prototype.
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
-import { engineParams, eRangeOf, lRangeOf } from '../engines/constants.js';
+import {
+  engineParams, eRangeOf, lRangeOf, CHANNELS, pLabel, eUnitOf, eStepOf, lStepOf, fmtE,
+} from '../engines/constants.js';
 import { theme } from '../theme.js';
 import { plot2d } from './plot2d.js';
 
 const SP = 8, SZ = 8;
 const E_FLOOR = 0.5, NE = 100, NDCP = 72, NR = 25;
-// preset E window clipped to the readability floor (low-E rings blow up the shared scale)
+// preset E window clipped to the readability floor (low-E rings blow up the shared
+// scale); windows entirely below the floor (reactor MeV spans) are kept as-is
 const eSpan = (preset) => {
   const [e0, e1] = eRangeOf(preset);
-  return [Math.max(E_FLOOR, e0), e1];
+  return e1 > E_FLOOR ? [Math.max(E_FLOOR, e0), e1] : [e0, e1];
 };
 const zOfE = (E, E_MAX) => -(E / E_MAX) * SZ; // one-sided: z = 0 is E = 0; E grows toward -z as in oscillogram
 const ORD_DEF = { NO: { color: 0xe07040, sign: 1 }, IO: { color: 0x4090e0, sign: -1 } };
 const LOOP_S = 10; // ~10 s per sweep of the marker, as in oscillogram
 
-function pair(ep, dm31, E, L, rho, dcpRad) {
+function pair(ep, ch, dm31, E, L, rho, dcpRad) {
+  const { a, b } = CHANNELS[ch];
   const args = [ep.s12sq, ep.s13sq, ep.s23sq, dcpRad, ep.dm21, dm31, L, E, rho * ep.Ye, 1];
   const Pn = probabilityMatter(...args);
   args[7] = -E;
   const Pa = probabilityMatter(...args);
-  return [Math.max(0, Pn[1][0]), Math.max(0, Pa[1][0])];
+  return [Math.max(0, Pn[a][b]), Math.max(0, Pa[a][b])];
 }
 
 export default {
@@ -55,8 +59,7 @@ export default {
     for (const pts of [
       [[0, 0, 0], [SP + 0.6, 0, 0]], [[0, 0, 0], [0, SP + 0.6, 0]], [[0, 0, 0], [0, 0, -SZ - 0.6]],
     ]) base.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map((p) => new THREE.Vector3(...p))), axMat));
-    const xl = textSprite('P(νμ→νe)'); xl.position.set(SP + 1.6, 0, 0); base.scene.add(xl);
-    const yl = textSprite('P̄(ν̄μ→ν̄e)'); yl.position.set(0, SP + 1, 0); base.scene.add(yl);
+    let xl = null, yl = null, lastChKey = null; // channel-dependent axis labels
     let zl = null, lastZKey = null;
 
     const ORD = {};
@@ -96,10 +99,20 @@ export default {
       const ep = engineParams(store);
       const dm31mag = Math.abs(ep.dm31);
       const vs = store.views.biprob;
+      const ch = store.channel;
       const L = store.L, rho = store.rho, Es = store.E, dcpM = store.dcp * Math.PI / 180;
       const [E_MIN, E_MAX] = eSpan(store.basePreset);
 
-      const zKey = `E [GeV] (${E_MIN} - ${E_MAX})`;
+      if (ch !== lastChKey) {
+        if (xl) base.scene.remove(xl);
+        if (yl) base.scene.remove(yl);
+        xl = textSprite(pLabel(ch)); xl.position.set(SP + 1.6, 0, 0); base.scene.add(xl);
+        yl = textSprite(pLabel(ch, true)); yl.position.set(0, SP + 1, 0); base.scene.add(yl);
+        lastChKey = ch;
+      }
+
+      const { unit, scale } = eUnitOf(store.basePreset);
+      const zKey = `E [${unit}] (${+(E_MIN * scale).toFixed(4)} - ${+(E_MAX * scale).toFixed(4)})`;
       if (zKey !== lastZKey) {
         if (zl) base.scene.remove(zl);
         zl = textSprite(zKey);
@@ -110,7 +123,7 @@ export default {
 
       // the ring stack doesn't depend on E/dCP — skip the NE x NDCP grids when
       // only those sliders moved (e.g. play sweeping E)
-      const gridKey = JSON.stringify([ep, L, rho, E_MIN, E_MAX]);
+      const gridKey = JSON.stringify([ep, ch, L, rho, E_MIN, E_MAX]);
       if (gridKey !== lastGridKey) {
         lastGridKey = gridKey;
 
@@ -122,7 +135,7 @@ export default {
           for (let i = 0; i < NE; i++) {
             const E = E_MIN + (i / (NE - 1)) * (E_MAX - E_MIN);
             for (let j = 0; j < NDCP; j++) {
-              const [p, pb] = pair(ep, o.sign * dm31mag, E, L, rho, (j / NDCP) * 2 * Math.PI);
+              const [p, pb] = pair(ep, ch, o.sign * dm31mag, E, L, rho, (j / NDCP) * 2 * Math.PI);
               const k = i * NDCP + j;
               o.P[k] = p; o.Pb[k] = pb;
               if (p > maxP) maxP = p;
@@ -164,19 +177,19 @@ export default {
 
         const pts = [];
         for (let j = 0; j < NDCP; j++) {
-          const [p, pb] = pair(ep, o.sign * dm31mag, Es, L, rho, (j / NDCP) * 2 * Math.PI);
+          const [p, pb] = pair(ep, ch, o.sign * dm31mag, Es, L, rho, (j / NDCP) * 2 * Math.PI);
           pts.push(new THREE.Vector3((p / maxP) * SP, (pb / maxP) * SP, zOfE(Es, E_MAX)));
         }
         o.slice.geometry.dispose();
         o.slice.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 144, 0.045, 8, true);
 
-        [o.pM, o.pbM] = pair(ep, o.sign * dm31mag, Es, L, rho, dcpM);
+        [o.pM, o.pbM] = pair(ep, ch, o.sign * dm31mag, Es, L, rho, dcpM);
         o.marker.position.set((o.pM / maxP) * SP, (o.pbM / maxP) * SP, zOfE(Es, E_MAX));
       }
       connector.visible = vs.showNO && vs.showIO;
       connector.geometry.setFromPoints([ORD.NO.marker.position.clone(), ORD.IO.marker.position.clone()]);
       readout =
-        `E ${Es} GeV · δCP ${store.dcp}° · NO P ${ORD.NO.pM.toFixed(4)} P̄ ${ORD.NO.pbM.toFixed(4)}` +
+        `E ${fmtE(Es, store.basePreset)} · δCP ${store.dcp}° · NO P ${ORD.NO.pM.toFixed(4)} P̄ ${ORD.NO.pbM.toFixed(4)}` +
         ` · IO P ${ORD.IO.pM.toFixed(4)} P̄ ${ORD.IO.pbM.toFixed(4)}` +
         ` · ΔP ${(ORD.NO.pM - ORD.IO.pM).toFixed(4)}`;
     }
@@ -192,8 +205,8 @@ export default {
           : vs.anim === 'E' ? eRangeOf(store.basePreset) : [0, 360];
         const v = v0 + vs.marker * (v1 - v0);
         // rounded to the shared sliders' steps
-        if (vs.anim === 'L') store.L = Math.round(v / 5) * 5;
-        else if (vs.anim === 'E') store.E = Math.round(v * 100) / 100;
+        if (vs.anim === 'L') { const s = lStepOf(store.basePreset); store.L = Math.round(v / s) * s; }
+        else if (vs.anim === 'E') { const s = eStepOf(store.basePreset); store.E = Math.round(v / s) * s; }
         else store.dcp = Math.round(v);
       }
       lastMarker = vs.marker;
@@ -203,7 +216,7 @@ export default {
   },
 
   companion: {
-    title: (store) => `Biprobability at E = ${store.E} GeV`,
+    title: (store) => `Biprobability at E = ${fmtE(store.E, store.basePreset)}`,
     height: 280,
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
@@ -224,14 +237,14 @@ export default {
       for (const o of orders) {
         o.pts = [];
         for (let j = 0; j <= NDCP; j++) {
-          const [p, pb] = pair(ep, o.sign * dm31mag, Es, L, rho, ((j % NDCP) / NDCP) * 2 * Math.PI);
+          const [p, pb] = pair(ep, store.channel, o.sign * dm31mag, Es, L, rho, ((j % NDCP) / NDCP) * 2 * Math.PI);
           o.pts.push([p, pb]);
           maxP = Math.max(maxP, p, pb);
         }
-        [o.pM, o.pbM] = pair(ep, o.sign * dm31mag, Es, L, rho, dcpM);
+        [o.pM, o.pbM] = pair(ep, store.channel, o.sign * dm31mag, Es, L, rho, dcpM);
       }
       const m = maxP * 1.05;
-      const P = plot2d(ctx, w, h, dpr, { x: [0, m], y: [0, m], xTitle: 'P(νμ→νe)', yTitle: 'P̄(ν̄μ→ν̄e)', square: true, xTicks: 3, yTicks: 3 });
+      const P = plot2d(ctx, w, h, dpr, { x: [0, m], y: [0, m], xTitle: pLabel(store.channel), yTitle: pLabel(store.channel, true), square: true, xTicks: 3, yTicks: 3 });
       const X = (p) => P.X(p), Y = (p) => P.Y(p);
 
       ctx.strokeStyle = theme().plotFrame;

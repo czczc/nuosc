@@ -1,4 +1,5 @@
-// Flavor tube: composition of an initial numu along the baseline, Jacobi engine.
+// Flavor tube: composition of the channel's initial flavor (numu for beam channels,
+// nue for reactor survival) along the baseline, Jacobi engine.
 // Port of prototypes/flavor-ribbon.html — tube mode (cross-section = pie of the three
 // flavor fractions, constant radius = unitarity, nue sector anchored at angle 0) plus
 // stacked-bands mode (stack top edge = unitarity check), with a pie-disk marker (tube)
@@ -6,7 +7,7 @@
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { hamiltonian, eigH, prob } from '../engines/jacobi.js';
-import { engineParams, lRangeOf, eRangeOf } from '../engines/constants.js';
+import { engineParams, lRangeOf, eRangeOf, CHANNELS, eUnitOf, eStepOf, lStepOf, fmtE } from '../engines/constants.js';
 import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
@@ -32,6 +33,9 @@ const DISK_R = 1.4; // slightly proud of the tube
 
 const FLAVOR_HEX = ['#e05545', '#4488ee', '#44aa55']; // e, mu, tau
 const SECTOR_RGB = FLAVOR_HEX.map((c) => new THREE.Color(c));
+// initial flavor index from the shared channel (1 = numu, 0 = nue for reactor survival)
+const initOf = (store) => CHANNELS[store.channel].a;
+const initName = (store) => CHANNELS[store.channel].nu[0];
 
 // vertex angles of one cross-section ring from cumulative probabilities; sector
 // boundaries land exactly on vertices so they stay crisp and migrate smoothly along L
@@ -223,13 +227,14 @@ export default {
     function update() {
       const st = store.views.tube; // reads mode only — never play/marker (tick-only)
       const ep = engineParams(store);
+      const ai = initOf(store);
       lastLmax = lRangeOf(store.basePreset)[1]; // tube always spans the experiment's 0 - 2L
       eig = eigH(hamiltonian(ep, store.E, store.rho, store.anti));
       for (let i = 0; i < NS; i++) {
         const L = (i / (NS - 1)) * lastLmax;
-        const pe = prob(eig, 1, 0, L);
-        const pm = prob(eig, 1, 1, L);
-        const pt = prob(eig, 1, 2, L);
+        const pe = prob(eig, ai, 0, L);
+        const pm = prob(eig, ai, 1, L);
+        const pt = prob(eig, ai, 2, L);
         Pe[i] = pe; cumMu[i] = pe + pm; cumTau[i] = pe + pm + pt; // top edge = unitarity check
       }
       const tube = st.mode === 'tube';
@@ -249,7 +254,7 @@ export default {
 
         // boundary surfaces over the full (L, E) window; independent of store.E, so
         // memoized — an E animation only moves the slice through a fixed cube
-        const surfKey = JSON.stringify([ep, store.rho, store.anti, lastLmax, E0, E1]);
+        const surfKey = JSON.stringify([ep, ai, store.rho, store.anti, lastLmax, E0, E1]);
         if (surfKey !== lastSurfKey) {
           const pE = surfE.geometry.attributes.position;
           const pM = surfMu.geometry.attributes.position;
@@ -260,7 +265,7 @@ export default {
             for (let j = 0; j < NL; j++) {
               const L = (j / (NL - 1)) * lastLmax;
               const z = zOfL(L, lastLmax);
-              const pe = prob(eg, 1, 0, L), pm = prob(eg, 1, 1, L);
+              const pe = prob(eg, ai, 0, L), pm = prob(eg, ai, 1, L);
               pE.setXYZ(i * NL + j, x, pe * SY, z);
               pM.setXYZ(i * NL + j, x, (pe + pm) * SY, z);
             }
@@ -284,7 +289,8 @@ export default {
       // bands mode follows the oscillogram's layout — E along x (front), L along z (left)
       if (tube) xLabel.position.set(0, -0.4, DE / 2 + 1.2);
       else xLabel.position.set(-SX / 2 - 1.6, -0.4, 0);
-      const eKey = `E [GeV]  (${eRangeOf(store.basePreset).join(' - ')})`;
+      const { unit, scale } = eUnitOf(store.basePreset);
+      const eKey = `E [${unit}]  (${eRangeOf(store.basePreset).map((v) => +(v * scale).toFixed(4)).join(' - ')})`;
       if (eKey !== labeledE) {
         if (eLabel) base.scene.remove(eLabel);
         eLabel = textSprite(eKey);
@@ -312,16 +318,20 @@ export default {
       // step); the disk always tracks the shared L, so dragging the L slider moves
       // the disk and both 2D plots too
       if (st.marker !== lastMarker) {
-        if (st.anim === 'L') store.L = Math.round((st.marker * lastLmax) / 5) * 5;
-        else if (st.anim === 'E') {
+        if (st.anim === 'L') {
+          const s = lStepOf(store.basePreset);
+          store.L = Math.round((st.marker * lastLmax) / s) * s;
+        } else if (st.anim === 'E') {
           const [v0, v1] = eRangeOf(store.basePreset);
-          store.E = Math.round((v0 + st.marker * (v1 - v0)) * 100) / 100;
+          const s = eStepOf(store.basePreset);
+          store.E = Math.round((v0 + st.marker * (v1 - v0)) / s) * s;
         } else store.dcp = Math.round(st.marker * 360);
       }
       lastMarker = st.marker;
+      const ai = initOf(store);
       const frac = Math.max(0, Math.min(1, store.L / lastLmax));
       const L = frac * lastLmax;
-      const pe = prob(eig, 1, 0, L), pm = prob(eig, 1, 1, L), pt = prob(eig, 1, 2, L);
+      const pe = prob(eig, ai, 0, L), pm = prob(eig, ai, 1, L), pt = prob(eig, ai, 2, L);
       const sum = pe + pm + pt;
       lastML = L; // marker L for the no-hover status chip
       diskMesh.position.x = -SX / 2 + frac * SX; // tube-mode marker: L along x
@@ -362,15 +372,16 @@ export default {
           eg = eigH(hamiltonian(engineParams(store), Eh, store.rho, store.anti));
         }
       }
-      const pe = prob(eg, 1, 0, L), pm = prob(eg, 1, 1, L), pt = prob(eg, 1, 2, L);
-      return `L ${L.toFixed(0)} km · E ${Eh.toFixed(2)} GeV · Pe ${pe.toFixed(4)} Pμ ${pm.toFixed(4)} Pτ ${pt.toFixed(4)}`;
+      const ai = initOf(store);
+      const pe = prob(eg, ai, 0, L), pm = prob(eg, ai, 1, L), pt = prob(eg, ai, 2, L);
+      return `L ${L.toFixed(0)} km · E ${fmtE(Eh, store.basePreset)} · Pe ${pe.toFixed(4)} Pμ ${pm.toFixed(4)} Pτ ${pt.toFixed(4)}`;
     }
 
     return { base, update, tick, probe, dispose: () => base.dispose() };
   },
 
   companion: {
-    title: (store) => `Flavor fractions vs L at E = ${store.E} GeV`,
+    title: (store) => `Flavor fractions vs L at E = ${fmtE(store.E, store.basePreset)}`,
     markerDriven: true, // repainted per frame by CompanionPanel's rAF, so draw may read marker
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
@@ -380,17 +391,18 @@ export default {
       ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const ep = engineParams(store);
+      const ai = initOf(store);
       const Lmax = lRangeOf(store.basePreset)[1];
       const eig = eigH(hamiltonian(ep, store.E, store.rho, store.anti));
       const NPT = 240;
       const cums = [new Float64Array(NPT), new Float64Array(NPT), new Float64Array(NPT)];
       for (let i = 0; i < NPT; i++) {
         const L = (i / (NPT - 1)) * Lmax;
-        const pe = prob(eig, 1, 0, L), pm = prob(eig, 1, 1, L), pt = prob(eig, 1, 2, L);
+        const pe = prob(eig, ai, 0, L), pm = prob(eig, ai, 1, L), pt = prob(eig, ai, 2, L);
         cums[0][i] = pe; cums[1][i] = pe + pm; cums[2][i] = pe + pm + pt;
       }
 
-      const P = plot2d(ctx, w, h, dpr, { x: [0, Lmax], y: [0, 1], xTitle: 'L [km]', yTitle: 'P(νμ→να)' });
+      const P = plot2d(ctx, w, h, dpr, { x: [0, Lmax], y: [0, 1], xTitle: 'L [km]', yTitle: `P(${initName(store)}→να)` });
       const xOf = (i) => P.X((i / (NPT - 1)) * Lmax);
       for (let k = 0; k < 3; k++) {
         const lo = k === 0 ? null : cums[k - 1], hi = cums[k];
@@ -433,19 +445,21 @@ export default {
       ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const ep = engineParams(store);
+      const ai = initOf(store);
       const [E0, E1] = eRangeOf(store.basePreset);
+      const { unit, scale } = eUnitOf(store.basePreset); // x axis in display units
       const L = markerL(store); // marker OK here: markerDriven
       const NPT = 160; // one eigH per point
       const cums = [new Float64Array(NPT), new Float64Array(NPT), new Float64Array(NPT)];
       for (let i = 0; i < NPT; i++) {
         const E = E0 + (i / (NPT - 1)) * (E1 - E0);
         const eig = eigH(hamiltonian(ep, E, store.rho, store.anti));
-        const pe = prob(eig, 1, 0, L), pm = prob(eig, 1, 1, L), pt = prob(eig, 1, 2, L);
+        const pe = prob(eig, ai, 0, L), pm = prob(eig, ai, 1, L), pt = prob(eig, ai, 2, L);
         cums[0][i] = pe; cums[1][i] = pe + pm; cums[2][i] = pe + pm + pt;
       }
 
-      const P = plot2d(ctx, w, h, dpr, { x: [E0, E1], y: [0, 1], xTitle: 'E [GeV]', yTitle: 'P(νμ→να)' });
-      const xOf = (i) => P.X(E0 + (i / (NPT - 1)) * (E1 - E0));
+      const P = plot2d(ctx, w, h, dpr, { x: [E0 * scale, E1 * scale], y: [0, 1], xTitle: `E [${unit}]`, yTitle: `P(${initName(store)}→να)` });
+      const xOf = (i) => P.X((E0 + (i / (NPT - 1)) * (E1 - E0)) * scale);
       for (let k = 0; k < 3; k++) {
         const lo = k === 0 ? null : cums[k - 1], hi = cums[k];
         ctx.fillStyle = FLAVOR_HEX[k];
@@ -461,7 +475,7 @@ export default {
       P.frame(); // the stacked fills cover the frame edges
 
       // white vertical marker line at the shared E (the tube/slice position)
-      const mx = P.X(Math.max(E0, Math.min(E1, store.E)));
+      const mx = P.X(Math.max(E0, Math.min(E1, store.E)) * scale);
       ctx.strokeStyle = theme().hiCss;
       ctx.lineWidth = dpr;
       ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();

@@ -1,14 +1,21 @@
 <script setup>
 import { computed } from 'vue';
 import { store, markCustom } from '../store.js';
-import { presetOf, lRangeOf, eRangeOf } from '../engines/constants.js';
+import { presetOf, lRangeOf, eRangeOf, eUnitOf, eStepOf, lStepOf } from '../engines/constants.js';
 
 const beam = computed(() => presetOf(store.basePreset) ?? null);
+const eu = computed(() => eUnitOf(store.basePreset)); // GeV or MeV display
 
 const shared = [
   { key: 'dcp', label: 'δCP [°]', min: 0, max: 360, step: 1 },
-  { key: 'E', label: 'E [GeV]', min: (s) => eRangeOf(s.basePreset)[0], max: (s) => eRangeOf(s.basePreset)[1], step: 0.01 },
-  { key: 'L', label: 'L [km]', min: 0, max: (s) => lRangeOf(s.basePreset)[1], step: 5, custom: true },
+  {
+    key: 'E', label: (s) => `E [${eUnitOf(s.basePreset).unit}]`,
+    min: (s) => eRangeOf(s.basePreset)[0], max: (s) => eRangeOf(s.basePreset)[1],
+    step: (s) => eStepOf(s.basePreset),
+    // E is stored in GeV; reactor windows display in MeV
+    disp: (v, s) => fmt(v * eUnitOf(s.basePreset).scale, 0.01),
+  },
+  { key: 'L', label: 'L [km]', min: 0, max: (s) => lRangeOf(s.basePreset)[1], step: (s) => lStepOf(s.basePreset), custom: true },
   { key: 'rho', label: 'ρ [g/cm³]', min: 0, max: 5, step: 0.05, custom: true },
 ];
 const rare = [
@@ -23,9 +30,13 @@ function fmt(v, step) {
   return Number(v).toFixed(prec);
 }
 
-// min/max may be (store) => value, e.g. preset-dependent L span
+// min/max/step/label may be (store) => value, e.g. preset-dependent L span
 function lim(v) {
   return typeof v === 'function' ? v(store) : v;
+}
+// energies in the experiment's display unit (avoids float dust like 1.7999999...)
+function eDisp(v) {
+  return +(v * eu.value.scale).toFixed(4);
 }
 </script>
 
@@ -33,13 +44,14 @@ function lim(v) {
   <div class="card">
     <h3>Controls</h3>
     <div v-if="beam" class="note">
-      {{ store.basePreset }} beam: {{ beam.Erange[0] }}–{{ beam.Erange[1] }} GeV · peak {{ beam.Epeak }} GeV
+      {{ store.basePreset }} flux: {{ eDisp(beam.Erange[0]) }}–{{ eDisp(beam.Erange[1]) }} {{ eu.unit }} ·
+      peak {{ eDisp(beam.Epeak) }} {{ eu.unit }}
     </div>
     <div v-for="p in shared" :key="p.key" class="ctl-row">
-      <label :for="p.key">{{ p.label }}</label>
-      <input :id="p.key" v-model.number="store[p.key]" type="range" :min="lim(p.min)" :max="lim(p.max)" :step="p.step"
-        @input="p.custom && markCustom()" />
-      <span class="val">{{ fmt(store[p.key], p.step) }}</span>
+      <label :for="p.key">{{ lim(p.label) }}</label>
+      <input :id="p.key" v-model.number="store[p.key]" type="range" :min="lim(p.min)" :max="lim(p.max)"
+        :step="lim(p.step)" @input="p.custom && markCustom()" />
+      <span class="val">{{ p.disp ? p.disp(store[p.key], store) : fmt(store[p.key], lim(p.step)) }}</span>
     </div>
     <div class="ctl-row">
       <label>particle</label>

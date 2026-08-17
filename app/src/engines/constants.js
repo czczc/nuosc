@@ -22,11 +22,36 @@ export const DEFAULTS = {
   Ye: 0.5,
 };
 
-// Long-baseline numu->nue experiments. Erange = beam flux span [GeV], Epeak = flux peak [GeV].
+// Oscillation channels selectable from the header rail. a/b = initial/final
+// flavor indices into the engines' 3x3 probability matrix (0 = e, 1 = mu, 2 = tau).
+// Labels use plain nu; antineutrinos stay on the shared particle toggle.
+export const CHANNELS = {
+  mue: { a: 1, b: 0, nu: ['νμ', 'νe'] },
+  mumu: { a: 1, b: 1, nu: ['νμ', 'νμ'] },
+  mutau: { a: 1, b: 2, nu: ['νμ', 'ντ'] },
+  ee: { a: 0, b: 0, nu: ['νe', 'νe'] },
+};
+export function channelLabel(ch) {
+  return CHANNELS[ch].nu.join('→');
+}
+// 'P(νμ→νe)', with bars (and P̄) when antineutrinos are selected
+export function pLabel(ch, anti = false) {
+  const [a, b] = CHANNELS[ch].nu;
+  const bar = (s) => s.replace('ν', 'ν̄');
+  return anti ? `P̄(${bar(a)}→${bar(b)})` : `P(${a}→${b})`;
+}
+
+// Experiment presets. Erange = flux span [GeV], Epeak = flux peak [GeV] (reactor
+// windows are MeV-scale; see eUnitOf). channels = which oscillation channels the
+// experiment measures; anti = the source is antineutrinos (checks the shared
+// particle toggle on selection).
 export const PRESETS = {
-  DUNE: { L: 1300, rho: 2.85, Erange: [0.5, 6], Epeak: 2.5 },
-  NOvA: { L: 810, rho: 2.84, Erange: [1, 3], Epeak: 2.0 },
-  T2K: { L: 295, rho: 2.6, Erange: [0.2, 1.5], Epeak: 0.6 },
+  DUNE: { L: 1300, rho: 2.85, Erange: [0.5, 6], Epeak: 2.5, channels: ['mue', 'mumu', 'mutau'] },
+  NOvA: { L: 810, rho: 2.84, Erange: [1, 3], Epeak: 2.0, channels: ['mue', 'mumu'] },
+  T2K: { L: 295, rho: 2.6, Erange: [0.2, 1.5], Epeak: 0.6, channels: ['mue', 'mumu'] },
+  JUNO: { L: 52.5, rho: 2.6, Erange: [0.0018, 0.009], Epeak: 0.004, channels: ['ee'], anti: true },
+  KamLAND: { L: 180, rho: 2.6, Erange: [0.0018, 0.009], Epeak: 0.004, channels: ['ee'], anti: true },
+  'Daya Bay': { L: 1.66, rho: 2.6, Erange: [0.0018, 0.009], Epeak: 0.004, channels: ['ee'], anti: true },
 };
 
 // User-defined experiments (src/experiments.js) are registered here so the range
@@ -47,6 +72,31 @@ export function lRangeOf(preset) {
 export const E_RANGE_DEFAULT = [0.2, 6];
 export function eRangeOf(preset) {
   return presetOf(preset)?.Erange ?? E_RANGE_DEFAULT;
+}
+
+// Channels an experiment measures; user experiments without a declaration
+// measure everything (github.com/czczc/nuglass/issues/15 adds the declaration).
+export function channelsOf(preset) {
+  return presetOf(preset)?.channels ?? Object.keys(CHANNELS);
+}
+
+// Display unit for the experiment's energies: reactor windows are MeV-scale.
+// E is stored in GeV everywhere; only labels and slider steps switch.
+export function eUnitOf(preset) {
+  return eRangeOf(preset)[1] < 0.05 ? { unit: 'MeV', scale: 1000 } : { unit: 'GeV', scale: 1 };
+}
+export function eStepOf(preset) {
+  return 0.01 / eUnitOf(preset).scale; // 0.01 in display units
+}
+export function fmtE(E, preset) {
+  const { unit, scale } = eUnitOf(preset);
+  return `${(E * scale).toFixed(2)} ${unit}`;
+}
+// Slider/animation step for L [km], scaled to the experiment's span (Daya Bay's
+// 1.66 km baseline needs finer steps than DUNE's 1300 km).
+export function lStepOf(preset) {
+  const Lmax = lRangeOf(preset)[1];
+  return Lmax >= 1000 ? 5 : Lmax >= 100 ? 0.5 : 0.01;
 }
 
 // Convert UI parameter state to engine-ready values.

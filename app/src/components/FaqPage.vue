@@ -214,8 +214,12 @@ onMounted(() => {
       <section id="faq-experiments">
         <h3>My experiments</h3>
         <p>
-          The DUNE / NOvA / T2K chips in the top bar are presets: each sets the distance to the
-          detector, the rock density along the way, and the beam's energy window. The <span class="k">+</span>
+          The experiment chips in the top bar are presets: each sets the distance to the
+          detector, the rock density along the way, and the source's energy window. The chip row
+          follows the oscillation channel selected next to the view tabs — beam channels
+          (νμ→νe, νμ→νμ, νμ→ντ) offer DUNE / NOvA / T2K, while νe→νe offers the reactor
+          experiments JUNO / KamLAND / Daya Bay (which also switch the particle toggle to
+          antineutrinos, since reactors emit ν̄e). The <span class="k">+</span>
           chip opens a page where you can build your own: name it, set the baseline and beam, and, if
           you want to explore, override the oscillation parameters themselves (the form starts from
           DUNE's numbers). Saved experiments live in your browser's storage (nothing is uploaded) and

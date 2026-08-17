@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from 'vue';
-import { store, applyPreset, setTheme } from './store.js';
+import { store, applyPreset, setTheme, setChannel } from './store.js';
 import { router } from './router.js';
-import { PRESETS } from './engines/constants.js';
+import { PRESETS, CHANNELS, channelLabel } from './engines/constants.js';
 import { VIEWS, VIEW_MAP } from './views/index.js';
 import StageHost from './components/StageHost.vue';
 import ControlsCard from './components/ControlsCard.vue';
@@ -13,12 +13,15 @@ import ExperimentsPage from './components/ExperimentsPage.vue';
 import logoLight from './assets/logo-light.png';
 import logoDark from './assets/logo-dark.png';
 
-const presetNames = Object.keys(PRESETS);
+const channelIds = Object.keys(CHANNELS);
+// experiment chips: only presets that measure the active channel
+const presetNames = computed(() =>
+  Object.keys(PRESETS).filter((p) => PRESETS[p].channels.includes(store.channel)));
 
 const companions = (v) => [v.companion, v.companion2].filter(Boolean);
 const vs = computed(() => store.views[store.view]); // current view's play/marker state
 // the last chip names whatever isn't a built-in: "custom" tweaks or a loaded user experiment
-const extraChip = computed(() => (presetNames.includes(store.preset) ? 'custom' : store.preset));
+const extraChip = computed(() => (PRESETS[store.preset] ? 'custom' : store.preset));
 const logoSrc = computed(() => (store.theme === 'light' ? logoLight : logoDark));
 </script>
 
@@ -32,6 +35,10 @@ const logoSrc = computed(() => (store.theme === 'light' ? logoLight : logoDark))
           {{ v.label }}
         </button>
       </nav>
+      <div class="group" role="group" aria-label="Channel">
+        <span v-for="c in channelIds" :key="c" class="chip" :class="{ on: store.channel === c }" role="button"
+          tabindex="0" @click="setChannel(c)" @keydown.enter="setChannel(c)">{{ channelLabel(c) }}</span>
+      </div>
       <div class="right">
         <div v-if="!store.faq && !store.exps" class="group" role="group" aria-label="Animation">
           <button class="navbtn play" :title="vs.play ? 'pause' : 'play'" @click="vs.play = !vs.play">

@@ -1,5 +1,5 @@
 import { reactive } from 'vue';
-import { DEFAULTS, PRESETS, presetOf } from './engines/constants.js';
+import { DEFAULTS, PRESETS, presetOf, channelsOf } from './engines/constants.js';
 
 const storedTheme = typeof localStorage !== 'undefined' ? localStorage.getItem('nuglass-theme') : null;
 
@@ -10,6 +10,7 @@ export const store = reactive({
   exps: false, // "my experiments" page open
   preset: 'DUNE',
   basePreset: 'DUNE', // last experiment clicked; keeps L spans stable while tweaking into "custom"
+  channel: 'mue', // oscillation channel (header rail), a CHANNELS key
 
   // shared physics controls
   E: PRESETS.DUNE.Epeak,
@@ -33,7 +34,7 @@ export const store = reactive({
     oscillogram: { axis2: 'L', anim: 'dcp', palette: 'rainbow', play: true, marker: 0.5 },
     tube: { mode: 'tube', anim: 'L', play: true, marker: 0.25 },
     sphere: { sweep: 'L', pole: 'both', play: true, marker: 0 },
-    phasors: { xaxis: 'L', channel: 'e', play: true, marker: 0 },
+    phasors: { xaxis: 'L', play: true, marker: 0 },
     biprob: { showNO: true, showIO: true, showSurf: false, anim: 'E', play: true, marker: 0.5 },
   },
 });
@@ -57,6 +58,21 @@ export function applyPreset(name) {
   store.dm31 = o.dm31;
   store.dcp = o.dcp;
   store.Ye = o.Ye ?? DEFAULTS.Ye;
+  // the particle toggle follows the source: reactors are antineutrinos, beams reset to ν
+  store.anti = p.anti ?? false;
+  // keep the channel if this experiment measures it, else its first channel
+  const chs = channelsOf(name);
+  if (!chs.includes(store.channel)) store.channel = chs[0];
+}
+
+// Header rail: switch channel; if the active experiment doesn't measure it,
+// fall back to the first built-in that does.
+export function setChannel(ch) {
+  store.channel = ch;
+  if (!channelsOf(store.basePreset).includes(ch)) {
+    const fallback = Object.keys(PRESETS).find((n) => PRESETS[n].channels.includes(ch));
+    if (fallback) applyPreset(fallback);
+  }
 }
 
 export function setTheme(t) {

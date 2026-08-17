@@ -1,9 +1,11 @@
-// Oscillogram surface: P(numu->nue) over (E x second-axis), NuFast engine.
+// Oscillogram surface: P for the shared channel over (E x second-axis), NuFast engine.
 // Reference implementation of the view contract (see views/index.js).
 import * as THREE from 'three';
 import { SceneBase, PALETTES, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
-import { engineParams, PRESETS, eRangeOf, lRangeOf } from '../engines/constants.js';
+import {
+  engineParams, PRESETS, eRangeOf, lRangeOf, CHANNELS, pLabel, eUnitOf, eStepOf, lStepOf, fmtE,
+} from '../engines/constants.js';
 import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
@@ -12,9 +14,10 @@ const RANGES = { dcp: [0, 360], rho: [0, 5] };
 const AXIS_LABEL = { L: 'L [km]', dcp: 'dCP [deg]', rho: 'rho [g/cm3]' };
 const LOOP_S = 10; // ~10 s per sweep of the marker, as in phasors
 
-function pMuE(ep, E, L, rho, dcp, anti) {
+function pChan(ep, ch, E, L, rho, dcp, anti) {
   const P = probabilityMatter(ep.s12sq, ep.s13sq, ep.s23sq, dcp * Math.PI / 180, ep.dm21, ep.dm31, L, anti ? -E : E, rho * ep.Ye, 1);
-  return Math.max(0, Math.min(1, P[1][0]));
+  const { a, b } = CHANNELS[ch];
+  return Math.max(0, Math.min(1, P[a][b]));
 }
 
 
@@ -90,12 +93,13 @@ export default {
       const [a2min, a2max] = axis2 === 'L' ? lRangeOf(store.basePreset) : RANGES[axis2];
       const held = { dcp: store.dcp, L: store.L, rho: store.rho };
       const anti = store.anti;
+      const ch = store.channel;
 
       // the surface doesn't depend on the swept variable's held value — skip the
       // rebuild when only that slider moved (e.g. play sweeping L with z axis = L)
       const paletteName = store.views.oscillogram.palette;
       const palette = PALETTES[paletteName] ?? PALETTES.rainbow;
-      const surfKey = JSON.stringify([ep, E_MIN, E_MAX, axis2, a2min, a2max, anti, paletteName, { ...held, [axis2]: 0 }]);
+      const surfKey = JSON.stringify([ep, E_MIN, E_MAX, axis2, a2min, a2max, anti, ch, paletteName, { ...held, [axis2]: 0 }]);
       if (surfKey !== lastSurfKey) {
         lastSurfKey = surfKey;
         const pos = geo.attributes.position;
@@ -105,7 +109,7 @@ export default {
           const E = E_MIN + (pos.getX(i) / SX + 0.5) * (E_MAX - E_MIN);
           const v = a2min + (0.5 - pos.getZ(i) / SZ) * (a2max - a2min);
           held[axis2] = v;
-          P[i] = pMuE(ep, E, held.L, held.rho, held.dcp, anti);
+          P[i] = pChan(ep, ch, E, held.L, held.rho, held.dcp, anti);
           if (P[i] > maxP) maxP = P[i];
         }
         for (let i = 0; i < pos.count; i++) {
@@ -125,12 +129,13 @@ export default {
       held[axis2] = sv;
       for (let i = 0; i < N; i++) {
         const E = E_MIN + (i / (N - 1)) * (E_MAX - E_MIN);
-        const p = pMuE(ep, E, held.L, held.rho, held.dcp, anti);
+        const p = pChan(ep, ch, E, held.L, held.rho, held.dcp, anti);
         sp.setXYZ(i, (i / (N - 1) - 0.5) * SX, (p / maxP) * SY + 0.02, zSlice);
       }
       sp.needsUpdate = true;
 
-      const xKey = `E [GeV]  (${E_MIN} - ${E_MAX})`;
+      const { unit, scale } = eUnitOf(store.basePreset);
+      const xKey = `E [${unit}]  (${+(E_MIN * scale).toFixed(4)} - ${+(E_MAX * scale).toFixed(4)})`;
       if (xKey !== lastXKey) {
         if (xLabel) base.scene.remove(xLabel);
         xLabel = textSprite(xKey);
@@ -146,7 +151,7 @@ export default {
         base.scene.add(zLabel);
         lastZKey = zKey;
       }
-      lastHeld = { ...held, axis2, a2min, a2max, E_MIN, E_MAX, ep, anti };
+      lastHeld = { ...held, axis2, a2min, a2max, E_MIN, E_MAX, ep, anti, ch };
     }
 
     // play/marker animation: the marker drives the shared slider of the chosen
@@ -163,8 +168,8 @@ export default {
           : vs.anim === 'E' ? eRangeOf(store.basePreset) : RANGES.dcp;
         const v = v0 + vs.marker * (v1 - v0);
         // rounded to the shared sliders' steps
-        if (vs.anim === 'L') store.L = Math.round(v / 5) * 5;
-        else if (vs.anim === 'E') store.E = Math.round(v * 100) / 100;
+        if (vs.anim === 'L') { const s = lStepOf(store.basePreset); store.L = Math.round(v / s) * s; }
+        else if (vs.anim === 'E') { const s = eStepOf(store.basePreset); store.E = Math.round(v / s) * s; }
         else store.dcp = Math.round(v);
       }
       lastMarker = vs.marker;
@@ -177,7 +182,7 @@ export default {
         for (let i = 0; i < N; i++) {
           const z = (i / (N - 1) - 0.5) * SZ;
           held[lastHeld.axis2] = lastHeld.a2min + (0.5 - z / SZ) * (lastHeld.a2max - lastHeld.a2min);
-          const p = pMuE(lastHeld.ep, store.E, held.L, held.rho, held.dcp, lastHeld.anti);
+          const p = pChan(lastHeld.ep, lastHeld.ch, store.E, held.L, held.rho, held.dcp, lastHeld.anti);
           sp.setXYZ(i, x, (p / maxP) * SY + 0.02, z);
         }
         sp.needsUpdate = true;
@@ -189,15 +194,15 @@ export default {
       const hit = base.raycast(event, surface);
       if (!hit) {
         // no hover -> live status at the shared sliders (updates as the animation drives them)
-        const p = pMuE(lastHeld.ep, store.E, store.L, store.rho, store.dcp, lastHeld.anti);
-        return `E ${store.E.toFixed(2)} GeV · L ${store.L.toFixed(0)} km · δCP ${store.dcp.toFixed(0)}° · P ${p.toFixed(4)}`;
+        const p = pChan(lastHeld.ep, lastHeld.ch, store.E, store.L, store.rho, store.dcp, lastHeld.anti);
+        return `E ${fmtE(store.E, store.basePreset)} · L ${store.L.toFixed(0)} km · δCP ${store.dcp.toFixed(0)}° · P ${p.toFixed(4)}`;
       }
       const E = lastHeld.E_MIN + (hit.point.x / SX + 0.5) * (lastHeld.E_MAX - lastHeld.E_MIN);
       const v = lastHeld.a2min + (0.5 - hit.point.z / SZ) * (lastHeld.a2max - lastHeld.a2min);
       const held = { dcp: lastHeld.dcp, L: lastHeld.L, rho: lastHeld.rho };
       held[lastHeld.axis2] = v;
-      const p = pMuE(lastHeld.ep, E, held.L, held.rho, held.dcp, lastHeld.anti);
-      return `E ${E.toFixed(2)} GeV · ${AXIS_LABEL[lastHeld.axis2]} ${v.toFixed(1)} · P ${p.toFixed(4)} · maxP ${maxP.toFixed(4)}`;
+      const p = pChan(lastHeld.ep, lastHeld.ch, E, held.L, held.rho, held.dcp, lastHeld.anti);
+      return `E ${fmtE(E, store.basePreset)} · ${AXIS_LABEL[lastHeld.axis2]} ${v.toFixed(1)} · P ${p.toFixed(4)} · maxP ${maxP.toFixed(4)}`;
     }
 
     return { base, update, tick, probe, dispose: () => base.dispose() };
@@ -214,6 +219,7 @@ export default {
       ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
       const ep = engineParams(store);
       const [E_MIN, E_MAX] = eRangeOf(store.basePreset);
+      const { unit, scale } = eUnitOf(store.basePreset); // axis in display units
       const NPT = 240;
       const series = [
         { anti: false, color: '#e0604f', label: 'ν' },
@@ -224,17 +230,20 @@ export default {
         const ys = new Float32Array(NPT);
         for (let i = 0; i < NPT; i++) {
           const E = E_MIN + (E_MAX - E_MIN) * i / (NPT - 1);
-          ys[i] = pMuE(ep, E, store.L, store.rho, store.dcp, s.anti);
+          ys[i] = pChan(ep, store.channel, E, store.L, store.rho, store.dcp, s.anti);
           if (ys[i] > pmax) pmax = ys[i];
         }
         return ys;
       });
-      const P = plot2d(ctx, w, h, dpr, { x: [E_MIN, E_MAX], y: [0, pmax * 1.08], xTitle: 'E [GeV]', yTitle: 'P(νμ→νe)' });
+      const P = plot2d(ctx, w, h, dpr, {
+        x: [E_MIN * scale, E_MAX * scale], y: [0, pmax * 1.08],
+        xTitle: `E [${unit}]`, yTitle: pLabel(store.channel),
+      });
 
       // experiment beam: dashed line at the flux peak
       const beam = PRESETS[store.basePreset];
       if (beam) {
-        const xp = P.X(beam.Epeak);
+        const xp = P.X(beam.Epeak * scale);
         ctx.strokeStyle = theme().beam;
         ctx.lineWidth = dpr;
         ctx.setLineDash([4 * dpr, 4 * dpr]);
@@ -242,21 +251,21 @@ export default {
         ctx.setLineDash([]);
         ctx.font = `${10 * dpr}px ui-monospace, monospace`;
         ctx.fillStyle = theme().beamText;
-        ctx.fillText(`peak ${beam.Epeak} GeV`, xp + 4 * dpr, P.mt + P.ph - 6 * dpr);
+        ctx.fillText(`peak ${fmtE(beam.Epeak, store.basePreset)}`, xp + 4 * dpr, P.mt + P.ph - 6 * dpr);
       }
       data.forEach((ys, si) => {
         ctx.strokeStyle = series[si].color;
         ctx.lineWidth = 1.8 * dpr;
         ctx.beginPath();
         for (let i = 0; i < NPT; i++) {
-          const x = P.X(E_MIN + (E_MAX - E_MIN) * i / (NPT - 1));
+          const x = P.X((E_MIN + (E_MAX - E_MIN) * i / (NPT - 1)) * scale);
           const y = P.Y(ys[i]);
           if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
         ctx.stroke();
       });
       if (store.views.oscillogram.anim === 'E') {
-        const mx = P.X(store.E);
+        const mx = P.X(store.E * scale);
         ctx.strokeStyle = theme().hiCss;
         ctx.lineWidth = dpr;
         ctx.beginPath(); ctx.moveTo(mx, P.mt); ctx.lineTo(mx, P.mt + P.ph); ctx.stroke();
@@ -267,7 +276,7 @@ export default {
 
   // second panel: P vs dCP at the shared energy
   companion2: {
-    title: (store) => `P vs δCP at E = ${store.E.toFixed(2)} GeV`,
+    title: (store) => `P vs δCP at E = ${fmtE(store.E, store.basePreset)}`,
     markerDriven: true,
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
@@ -287,12 +296,12 @@ export default {
         const ys = new Float32Array(NPT);
         for (let i = 0; i < NPT; i++) {
           const dcp = 360 * i / (NPT - 1);
-          ys[i] = pMuE(ep, E, store.L, store.rho, dcp, s.anti);
+          ys[i] = pChan(ep, store.channel, E, store.L, store.rho, dcp, s.anti);
           if (ys[i] > pmax) pmax = ys[i];
         }
         return ys;
       });
-      const P = plot2d(ctx, w, h, dpr, { x: [0, 360], y: [0, pmax * 1.08], xTitle: 'δCP [deg]', yTitle: 'P(νμ→νe)' });
+      const P = plot2d(ctx, w, h, dpr, { x: [0, 360], y: [0, pmax * 1.08], xTitle: 'δCP [deg]', yTitle: pLabel(store.channel) });
 
       // dashed line at the current dCP slider value
       const xp = P.X(store.dcp);
