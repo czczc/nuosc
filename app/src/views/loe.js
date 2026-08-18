@@ -114,9 +114,10 @@ export default {
         + 'cross-faded into their average as the phase grows past ~15–25 rad.',
     },
     {
-      // the marker drives a shared slider; the white L/E cross-section always
-      // tracks the experiment's live L/E point (E and L move it, ρ morphs the
-      // surface through the vacuum collapse at ρ = 0, δCP reshapes the curves)
+      // the marker drives a shared slider; the front marker tracks the live
+      // L/E point and the white cross-section rides the surface at the fixed
+      // baseline L (E and L move them, ρ morphs the surface through the vacuum
+      // collapse at ρ = 0, δCP reshapes the curves)
       key: 'marker', type: 'marker', label: 'animate', step: 0.002,
       select: {
         key: 'anim',
@@ -205,8 +206,10 @@ export default {
       markGroup.add(s);
     });
 
-    // marker slice: vertical line + dot on the focus curve, plus the fixed-L/E
-    // cross-section across the sheet (flat in vacuum, wiggly in matter)
+    // marker slice: vertical line + dot on the focus curve, plus the fixed-L
+    // cross-section across the sheet — the spectrum the experiment measures
+    // (row j at energy E is sampled at lx = log10(L/E)); at ρ = 0 its front
+    // view lies exactly on the vacuum curve
     const dropGeo = new THREE.BufferGeometry();
     dropGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(2 * 3), 3));
     const dropLine = new THREE.Line(dropGeo, new THREE.LineBasicMaterial({ color: theme().hi }));
@@ -343,19 +346,23 @@ export default {
       dp.needsUpdate = true;
       dropGeo.computeBoundingSphere();
       dot.position.set(x, pv * SY, ZF);
-      // cross-section across the surface: rows are individually parameterized
-      // (slanted band), so include only rows the marker's L/E actually reaches
+      // cross-section across the surface at the experiment's fixed L: row j
+      // (energy E) is sampled at lx = log10(L/E), so the slice is the measured
+      // spectrum (companion2's matter curve) drawn in place on the sheet; rows
+      // are individually parameterized (slanted band), so skip rows the
+      // baseline doesn't reach
       let count = 0;
       if (cache.showSurf) {
-        const lxm = LX0 + frac * (LX1 - LX0);
         const sp = sliceGeo.attributes.position;
         for (let j = 0; j < NZ; j++) {
+          const E = cache.E0 + (j / (NZ - 1)) * (cache.E1 - cache.E0);
+          const lxj = Math.log10(store.L / E);
           const lxMax = cache.sheetLxMax[j];
-          if (lxm > lxMax) continue;
-          const fi = ((lxm - LX0) / (lxMax - LX0)) * (NX - 1);
+          if (lxj < LX0 || lxj > lxMax) continue;
+          const fi = ((lxj - LX0) / (lxMax - LX0)) * (NX - 1);
           const g0 = Math.floor(fi), gt = fi - g0, g1 = Math.min(NX - 1, g0 + 1);
           const p = cache.sheetP[j * NX + g0] * (1 - gt) + cache.sheetP[j * NX + g1] * gt;
-          sp.setXYZ(count++, x, p * SY + 0.01, zOfE(cache.E0 + (j / (NZ - 1)) * (cache.E1 - cache.E0), cache.E0, cache.E1));
+          sp.setXYZ(count++, xw(lxj), p * SY + 0.01, zOfE(E, cache.E0, cache.E1));
         }
         sp.needsUpdate = true;
         sliceGeo.setDrawRange(0, count);
@@ -382,12 +389,14 @@ export default {
       const x = 10 ** (LX0 + frac * (LX1 - LX0));
       let out = `L/E ${fmtX(x)} km/GeV · ρ ${store.rho.toFixed(2)} · ${pLabel(cache.focus, store.anti)} vac ${pVac(ep, cache.focus, x, store.anti).toFixed(4)}`;
       if (cache.showSurf) {
-        const lxm = LX0 + frac * (LX1 - LX0);
+        // range of the fixed-L slice (the measured spectrum) across the E window
         let lo = 1, hi = 0, any = false;
         for (let j = 0; j < NZ; j++) {
+          const E = cache.E0 + (j / (NZ - 1)) * (cache.E1 - cache.E0);
+          const lxj = Math.log10(store.L / E);
           const lxMax = cache.sheetLxMax[j];
-          if (lxm > lxMax) continue;
-          const g0 = Math.round(((lxm - LX0) / (lxMax - LX0)) * (NX - 1));
+          if (lxj < LX0 || lxj > lxMax) continue;
+          const g0 = Math.round(((lxj - LX0) / (lxMax - LX0)) * (NX - 1));
           const p = cache.sheetP[j * NX + g0];
           if (p < lo) lo = p;
           if (p > hi) hi = p;
