@@ -1,10 +1,10 @@
 # NuGlass
 
-Interactive 3D visualization of long-baseline neutrino oscillation (νμ → νe), built with Vue 3 and three.js.
+A fast and interactive 3D visualization of neutrino oscillations, built with Vue 3 and three.js.
 
 **Live site: https://czczc.github.io/nuglass/**
 
-The app offers six linked views of the same physics (an oscillogram surface, a bi-probability plot, a flavor-state sphere, an amplitude phasor diagram, a flavor-composition tube, and a worldline view (probability vs L/E) with matter-effect degeneracy breaking), switchable between oscillation channels (νμ→νe, νμ→νμ, νμ→ντ, νe→νe), each with a companion 2D plot and experiment presets (DUNE, NOvA, T2K, JUNO, KamLAND, Daya Bay). Probabilities come from two independent engines: a JavaScript port of NuFast-LBL ([Denton & Parke, arXiv:2405.02400](https://arxiv.org/abs/2405.02400)) and an exact complex-Jacobi amplitude engine, cross-validated against each other. See the in-app FAQ page for the physics details.
+The app offers six linked views of the same physics (oscillogram, biprobability, statesphere, phasors, flavortube, and worldline), each paired with live 2D plots, switchable between oscillation channels (νμ→νe, νμ→νμ, νμ→ντ, νe→νe), with experiment presets spanning accelerator and reactor scales (DUNE, NOvA, T2K, JUNO, KamLAND, Daya Bay). All calculations are performed live in the browser by two independent engines: a JavaScript port of NuFast-LBL ([Denton & Parke, arXiv:2405.02400](https://arxiv.org/abs/2405.02400)) and an exact amplitude engine that tracks the full quantum state, cross-checked against each other to better than one part in ten million. See the in-app FAQ page for the physics details.
 
 ## Local setup
 
@@ -27,7 +27,7 @@ If you use NuGlass in a paper or talk, please cite it as:
 ```bibtex
 @misc{nuglass,
   author       = {Zhang, Chao},
-  title        = {NuGlass: interactive 3D visualization of neutrino oscillation},
+  title        = {NuGlass: a fast and interactive 3D visualization of neutrino oscillations},
   year         = {2026},
   howpublished = {\url{https://czczc.github.io/nuglass/}},
   note         = {Source code: \url{https://github.com/czczc/nuglass}}

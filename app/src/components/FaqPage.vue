@@ -5,7 +5,7 @@ import { router } from '../router.js';
 
 const BIBTEX = `@misc{nuglass,
   author       = {Zhang, Chao},
-  title        = {NuGlass: interactive 3D visualization of neutrino oscillation},
+  title        = {NuGlass: a fast and interactive 3D visualization of neutrino oscillations},
   year         = {2026},
   howpublished = {\\url{https://czczc.github.io/nuglass/}},
   note         = {Source code: \\url{https://github.com/czczc/nuglass}}
@@ -35,21 +35,18 @@ onMounted(() => {
     <article class="doc">
       <h2>FAQ</h2>
       <p class="sub">
-        NuGlass is an interactive picture of neutrino oscillation: the strange way neutrinos change
-        from one type to another as they travel. Six 3D views, each paired with live 2D plots.
+        NuGlass is a fast, interactive, and animated 3D visualization of neutrino oscillations: the strange way neutrinos change
+        from one type to another as they travel. Six 3D views are provided, each paired with live 2D plots.
         This page explains what each view shows and how the numbers behind it are computed.
       </p>
 
       <section id="faq-engines">
         <h3>How the numbers are computed</h3>
         <p>
-          Everything on screen is calculated live in your browser from the real equations of
-          three-flavor neutrino oscillation, including the extra effect neutrinos feel when they travel
-          through the Earth’s rock (the “matter effect”). The default parameter values come from the
+          All calculations are performed live in your web browser from the equations of three-flavor neutrino oscillations, including the extra effect neutrinos feel when they travel
+          through the Earth (the “matter effect”). The default parameter values come from the
           world combined fit of all oscillation experiments
-          (<a href="http://www.nu-fit.org" target="_blank" rel="noopener">NuFit 6.1, 2025</a>), and every
-          one of them can be adjusted under “all parameters”. Antineutrinos (the mirror partners of
-          neutrinos) are computed the same way with the relevant signs flipped.
+          (<a href="http://www.nu-fit.org" target="_blank" rel="noopener">NuFit 6.1, 2025</a>), and can be adjusted under “all parameters”. Antineutrinos are computed the same way with the relevant signs flipped.
         </p>
         <p>
           Two calculators share the work. <strong>NuFast-LBL</strong>
@@ -59,34 +56,29 @@ onMounted(() => {
           ~26,000 points every time you drag a slider. It powers the oscillogram, biprobability and
           worldline views.
           The <strong>exact amplitude engine</strong> tracks the full quantum state of the neutrino, not
-          just the final probabilities; the state sphere and phasor views need that extra information.
-          The two are cross-checked against each other to better than one part in ten million.
+          just the final probabilities; the statesphere and phasors views need that extra information.
+          The two calculators are cross-checked against each other to better than one part in ten million.
         </p>
         <p>
-          <strong>Experiment presets</strong>: DUNE (a 1300 km beam from Illinois to South Dakota),
-          NOvA (810 km, Illinois to Minnesota) and T2K (295 km, across Japan) each set the travel
+          <strong>Experiment presets</strong>: DUNE, NOvA and T2K each set the travel
           distance, rock density and beam energy range of a real accelerator experiment; the reactor
           experiments JUNO, KamLAND and Daya Bay (offered for the νe→νe channel) do the same at MeV
-          energies. Picking one snaps every control to that experiment’s values; dragging any slider
-          afterwards redraws the active chip hollow and dashed to show it has been tweaked, but keeps
-          you inside that experiment’s ranges, so the interesting region always stays on screen.
+          energies. Picking one sets every parameter to that experiment’s values.
         </p>
       </section>
 
       <section id="faq-oscillogram">
         <h3>Oscillogram</h3>
         <p>
-          A landscape of probability: the surface’s height and color show the chance that a muon
-          neutrino has turned into an electron neutrino by the time it is detected. Left-to-right is the
+          A landscape of probability: the surface’s height and color show the chance that a neutrino flavor has turned into another flavor (or itself) by the time it is detected. Left-to-right is the
           neutrino’s energy E; the depth axis is your choice of a second variable: the travel distance L,
           the CP phase δCP (the parameter that can make neutrinos and antineutrinos behave differently),
-          or the density ρ of the rock the beam passes through. The palette menu in the view’s side
-          panel changes the color scale.
+          or the density ρ of the rock the beam passes through.
         </p>
         <p>
           The white line is a slice through the landscape at the current slider setting, and it is
           exactly the curve drawn in the first 2D panel below (probability vs energy, for neutrinos and
-          antineutrinos, with the experiment’s beam peak dashed). The second 2D panel shows how the
+          antineutrinos, with the experiment’s energy peak dashed). The second 2D panel shows how the
           probability at the current energy changes as δCP goes around its full circle.
         </p>
         <p>
@@ -96,21 +88,14 @@ onMounted(() => {
           “top” looks straight down and turns the surface into the classic color-map oscillogram that
           experiments publish.
         </p>
-        <p>
-          How to read it: the ridges are where the oscillation effect is strongest, and each experiment
-          aims its beam energy at the biggest one. Animating δCP makes the ridges slide back and forth;
-          that shift, compared between neutrinos and antineutrinos, is exactly what CP-violation
-          searches measure. Along the ρ axis you can watch denser matter boost the signal for neutrinos
-          or for antineutrinos, depending on which ordering of the neutrino masses nature chose.
-        </p>
         <p><button class="linkish" @click="openView('oscillogram')">open this view →</button></p>
       </section>
 
       <section id="faq-biprob">
         <h3>Biprobability</h3>
         <p>
-          Two chances plotted against each other: the probability that a muon neutrino becomes an
-          electron neutrino (horizontal) versus the same probability for antineutrinos (vertical), at
+          Two chances plotted against each other: the probability that a neutrino becomes a
+          different flavor (horizontal) versus the same probability for antineutrinos (vertical), at
           one energy and distance. As δCP sweeps through its full circle, the point traces out an
           ellipse. The 3D view stacks those ellipses along energy, for the two possible orderings of the
           neutrino masses (orange = normal, blue = inverted); the small spheres mark the current δCP,
@@ -120,7 +105,7 @@ onMounted(() => {
         </p>
         <p>
           How to read it: if neutrinos and antineutrinos behaved identically, the point would sit on the
-          gray diagonal; its distance from that diagonal is CP violation, seen live. The gap between
+          gray diagonal; its distance from that diagonal is CP violation. The gap between
           the orange and blue rings is what lets experiments tell the two mass orderings apart; where
           the rings overlap, that energy alone cannot decide.
         </p>
@@ -138,30 +123,17 @@ onMounted(() => {
         <p>
           How to read it: a textbook two-type oscillation would keep the arrow’s tip on the globe’s
           surface. Here the tip dips inside: a shorter arrow means part of the probability has leaked
-          into the third type, the tau neutrino, which this picture cannot show directly. The 2D panel
+          into the third type, which this picture cannot show directly. The 2D panel
           plots all three probabilities along the sweep, with its marker synced to the 3D arrow.
-        </p>
-        <p>
-          Why does the arrow stay mostly in the bottom half? Its height is the <em>difference</em>
-          between “how electron” and “how muon” the neutrino currently is, so the bottom half simply
-          means the muon side is still winning. The chance of turning into an electron neutrino never
-          grows beyond a few percent, so the arrow can never climb far toward the north pole. And most
-          of what the muon neutrino loses goes to the tau neutrino instead, which in this picture does
-          not lift the arrow up but pulls it inward, toward the center. You can watch that hand-off in
-          the 2D panel: the green (tau) curve absorbs almost everything the blue (muon) curve loses,
-          while the red (electron) curve stays a thin ripple at the bottom.
         </p>
         <p>
           For readers who want the exact construction: this globe is the
           <a href="https://en.wikipedia.org/wiki/Bloch_sphere" target="_blank" rel="noopener">Bloch
-          sphere</a> of quantum information theory, applied to the two flavors on the poles. Writing
-          a<sub>e</sub> and a<sub>μ</sub> for the quantum amplitudes of the traveling state (from the
-          exact engine, starting as a pure νμ), the arrow is
-          <span class="k">b = ( 2&hairsp;Re(a<sub>e</sub>a<sub>μ</sub>*), 2&hairsp;Im(a<sub>e</sub>a<sub>μ</sub>*), |a<sub>e</sub>|² − |a<sub>μ</sub>|² )</span>,
-          drawn with the last component vertical. The height is the probability difference
+          sphere</a> of a quantum state, applied to the two flavors on the poles. Writing
+          a<sub>e</sub> and a<sub>μ</sub> for the quantum amplitudes of the flavor states νe and νμ, the arrow is
+          <span class="k">b = ( 2&hairsp;Re(a<sub>e</sub>a<sub>μ</sub>*), 2&hairsp;Im(a<sub>e</sub>a<sub>μ</sub>*), |a<sub>e</sub>|² − |a<sub>μ</sub>|² )</span>. The height toward the north pole is the probability difference
           P<sub>e</sub> − P<sub>μ</sub>; the two horizontal components are the real and imaginary parts
-          of the interference term (the “coherence”) between the flavors: the quantum-phase
-          information that probabilities alone don’t carry. |b| = 1 for a pure two-flavor state;
+          of the interference term (the “coherence”) between the flavors. |b| = 1 means a pure two-flavor state;
           anything shorter means probability sits in the third flavor. For the ντ-vs-νμ pole choice,
           replace a<sub>e</sub> with a<sub>τ</sub>.
         </p>
@@ -172,10 +144,10 @@ onMounted(() => {
         <h3>Phasors</h3>
         <p>
           Why oscillation happens, drawn as directly as possible. Quantum mechanics adds up the three
-          ways a muon neutrino can become an electron neutrino as three arrows in a plane: one for each
+          ways a neutrino can become another neutrino as three arrows in a plane: one for each
           neutrino mass, each rotating at its own speed as the neutrino travels. The colored curves show
-          the arrows chained head to tail, the white curve is their total, and the curve on the floor is
-          the resulting probability.
+          the arrows chained head to tail, the white curve is their total amplitude, and the curve on the floor is
+          the resulting probability (amplitude squared).
         </p>
         <p>
           How to read it: the probability peaks where the arrows line up and vanishes where they cancel.
@@ -189,27 +161,14 @@ onMounted(() => {
       <section id="faq-tube">
         <h3>Flavortube</h3>
         <p>
-          Follow a muon neutrino down the beamline and watch its identity mix. Each slice of the tube is
+          Follow a neutrino along its journey and watch its identity mix. Each slice of the tube is
           a pie chart of the three possibilities at that distance: still a muon neutrino (blue), turned
-          into a tau neutrino (green), or turned into an electron neutrino (red). The tube’s thickness
+          into a tau neutrino (green), or turned into an electron neutrino (red). The tube’s cross-section area
           never changes, because the three chances always add up to 100%. The disk rides the animation
           marker and shows the mix at one spot. The tube also sits on an energy axis: drag the E slider
           (or animate over E) and the whole tube glides along it while its pattern stretches; lower
           energies flip flavor faster.
-        </p>
-        <p>
-          Switch the display to “stacked bands” and the same information unrolls into a box: distance
-          runs one way, beam energy the other, and at every point the red, blue, and green layers stack
-          up to exactly 1. The red carpet on the floor is the same surface the Oscillogram view shows
-          (the chance of turning into an electron neutrino), and the gap between the blue surface and the
-          box ceiling is the tau share. A translucent slice marks the current energy: it is exactly the
-          first 2D panel, standing inside the box.
-        </p>
-        <p>
-          How to read it: most of what leaves blue goes to green; muon neutrinos mostly turn into tau
-          neutrinos. The thin red wedge is the electron-neutrino appearance that experiments like DUNE
-          actually count. The two 2D panels are the matching flat charts: the mix along the beamline at
-          the chosen energy, and the mix across energies at the disk's current position.
+          Switch the display to “stacked bands” and the same information unrolls into a box.
         </p>
         <p><button class="linkish" @click="openView('tube')">open this view →</button></p>
       </section>
@@ -218,38 +177,24 @@ onMounted(() => {
         <h3>Worldline</h3>
         <p>
           The other views sweep distance or energy separately; this one uses the variable oscillation
-          actually depends on — L/E is proportional to the proper time the neutrino itself
+          actually depends on: L/E (distance traveled divided by energy) is proportional to the proper time the neutrino itself
           experiences, so this axis is the neutrino's own worldline, with every experiment pinned
-          somewhere along it. In empty space, every oscillation probability is a function of the single
-          combination L/E — distance traveled divided by energy — so each channel collapses onto one
-          universal curve, drawn here against L/E on a logarithmic axis. Both oscillation frequencies
+          somewhere along it. In vacuum, every oscillation probability is a function of the single
+          combination L/E, so each channel collapses onto one
+          universal curve. Both oscillation frequencies
           are visible at once: the fast atmospheric wiggle (first dip near L/E ≈ 500 km/GeV) and the
           slow solar valley (near L/E ≈ 15,000 km/GeV) with the fast wiggle riding on top of it.
-          The dashed markers pin real experiments at their own L/E: Daya Bay, NOvA, T2K and DUNE all
-          cluster around the first atmospheric dip — measured with very different distances and energies
-          but nearly the same L/E — while JUNO sits on the solar valley and KamLAND beyond it. The thick
+          The thick
           curve is the channel selected in the header; the checkboxes overlay the others.
         </p>
         <p>
           The third axis shows what breaks this elegant collapse: matter. Traveling through rock adds
           an effect that grows with energy E itself, not with L/E, so two neutrinos with the same L/E
           but different energies no longer oscillate identically. The colored surface (drawn like the
-          Oscillogram view) spreads the header channel across the experiment's reach — its energy
-          window, with baselines up to twice the experiment's — computed with the matter effect at the
+          Oscillogram view) spreads the selected channel across the experiment's energy window, computed with the matter effect at the
           current density ρ: at ρ = 0 the surface is perfectly flat along the energy axis (the front
-          view reproduces the vacuum curve exactly), and as ρ grows it twists — each energy pulls away
-          from the vacuum curve by a different amount. Drag the ρ slider to zero and watch the degeneracy
-          restore itself. The effect is largest for νμ→νe near beam energies (this is how DUNE tells
-          the mass ordering) and utterly negligible for reactor ν̄e at MeV energies, which is why
-          reactor experiments are the clean, vacuum-like measurement. The white slice always sits at
-          the experiment's current L/E (from the shared L and E sliders); its profile across the
-          surface is the matter spread at that L/E. The second 2D panel is the spectrum the
-          experiment actually measures — P vs E at the current baseline and density, matter effect
-          included, with the vacuum curve dashed for comparison. The animate menu sweeps E or L
-          (walking the L/E point along the axis), the CP phase, or the density ρ itself, morphing
-          the whole surface.
-          (The surface assumes constant density along the whole path — a toy for pedagogy, like the
-          shared ρ slider itself.)
+          view reproduces the vacuum curve). The line riding the surface is the cut through the
+          experiment's energy window at the fixed baseline L, and it is the same spectrum drawn in the second 2D panel.
         </p>
         <p><button class="linkish" @click="openView('loe')">open this view →</button></p>
       </section>
@@ -267,10 +212,7 @@ onMounted(() => {
           which channels it measures and whether the source is antineutrinos, and, if you want to
           explore, override the oscillation parameters themselves. The inputs switch between GeV·km
           and MeV·m for reactor-scale setups, and the form can be reset to DUNE or JUNO defaults.
-          Saved experiments live in your browser's storage (nothing is uploaded) and
-          are there whenever you come back. Loading one makes it the active experiment everywhere,
-          exactly like a built-in chip: every view sweeps over its ranges, and the reset ↺ button
-          returns to its values.
+          Saved experiments live in your browser's localStorage (nothing is uploaded), which persisits across visits. Loading one makes it the active experiment everywhere.
         </p>
       </section>
 

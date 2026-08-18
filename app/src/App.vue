@@ -54,7 +54,10 @@ function pickChannel(c) {
 <template>
   <div class="app">
     <header>
-      <img class="logo" :src="logoSrc" alt="NuGlass" />
+      <div class="brand">
+        <img class="logo" :src="logoSrc" alt="" />
+        <span class="wordmark">NuGlass</span>
+      </div>
       <nav class="tabs" aria-label="View">
         <button v-for="v in VIEWS" :key="v.id" :class="{ on: store.view === v.id && !store.faq && !store.exps }"
           @click="router.push('/' + v.id)">
@@ -196,7 +199,15 @@ header {
   height: 2px;
   background: var(--accent);
 }
+.brand { display: flex; align-items: center; gap: 8px; flex: none; }
 .logo { height: 38px; display: block; }
+.wordmark {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
 .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 /* divider between the channel and experiment groups (the pill borders alone are
    too subtle in dark mode to read as separate controls) */
@@ -214,6 +225,7 @@ aside {
   aside { width: 100%; border-left: none; border-top: 1px solid var(--border); }
   header { height: auto; flex-wrap: wrap; gap: 6px 10px; padding: 6px 10px; }
   .logo { height: 30px; }
+  .wordmark { display: none; }
   .tabs {
     order: 3;
     flex: 1 1 100%;

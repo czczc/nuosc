@@ -21,6 +21,14 @@ export const router = createRouter({
   ],
 });
 
+// tab/bookmark titles carry the brand and the current page
+router.afterEach((to) => {
+  if (to.name === 'view') document.title = `${VIEW_MAP[to.params.view].label} · NuGlass`;
+  else if (to.name === 'faq') document.title = 'FAQ · NuGlass';
+  else if (to.name === 'experiments') document.title = 'Experiments · NuGlass';
+  else document.title = 'NuGlass — 3D Neutrino Oscillations';
+});
+
 router.beforeEach((to) => {
   if (to.name === 'faq') {
     store.faq = to.params.section || 'engines';
