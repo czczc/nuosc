@@ -56,7 +56,8 @@ onMounted(() => {
           (<a href="https://arxiv.org/abs/2405.02400" target="_blank" rel="noopener">arXiv:2405.02400</a>,
           <a href="https://github.com/PeterDenton/NuFast-LBL" target="_blank" rel="noopener">reference code</a>)
           is a very fast method by Denton &amp; Parke, quick enough to recompute a whole surface of
-          ~26,000 points every time you drag a slider. It powers the oscillogram and biprobability views.
+          ~26,000 points every time you drag a slider. It powers the oscillogram, biprobability and
+          worldline views.
           The <strong>exact amplitude engine</strong> tracks the full quantum state of the neutrino, not
           just the final probabilities; the state sphere and phasor views need that extra information.
           The two are cross-checked against each other to better than one part in ten million.
@@ -64,9 +65,11 @@ onMounted(() => {
         <p>
           <strong>Experiment presets</strong>: DUNE (a 1300 km beam from Illinois to South Dakota),
           NOvA (810 km, Illinois to Minnesota) and T2K (295 km, across Japan) each set the travel
-          distance, rock density and beam energy range of a real experiment. Picking one snaps every
-          control to that experiment’s values; dragging any slider afterwards shows the “custom” chip
-          but keeps you inside that experiment’s ranges, so the interesting region always stays on screen.
+          distance, rock density and beam energy range of a real accelerator experiment; the reactor
+          experiments JUNO, KamLAND and Daya Bay (offered for the νe→νe channel) do the same at MeV
+          energies. Picking one snaps every control to that experiment’s values; dragging any slider
+          afterwards redraws the active chip hollow and dashed to show it has been tweaked, but keeps
+          you inside that experiment’s ranges, so the interesting region always stays on screen.
         </p>
       </section>
 
@@ -212,7 +215,7 @@ onMounted(() => {
       </section>
 
       <section id="faq-loe">
-        <h3>Worldline (L/E)</h3>
+        <h3>Worldline</h3>
         <p>
           The other views sweep distance or energy separately; this one uses the variable oscillation
           actually depends on — L/E is proportional to the proper time the neutrino itself
@@ -260,9 +263,11 @@ onMounted(() => {
           (νμ→νe, νμ→νμ, νμ→ντ) offer DUNE / NOvA / T2K, while νe→νe offers the reactor
           experiments JUNO / KamLAND / Daya Bay (which also switch the particle toggle to
           antineutrinos, since reactors emit ν̄e). The <span class="k">+</span>
-          chip opens a page where you can build your own: name it, set the baseline and beam, and, if
-          you want to explore, override the oscillation parameters themselves (the form starts from
-          DUNE's numbers). Saved experiments live in your browser's storage (nothing is uploaded) and
+          chip opens a page where you can build your own: name it, set the baseline and beam, declare
+          which channels it measures and whether the source is antineutrinos, and, if you want to
+          explore, override the oscillation parameters themselves. The inputs switch between GeV·km
+          and MeV·m for reactor-scale setups, and the form can be reset to DUNE or JUNO defaults.
+          Saved experiments live in your browser's storage (nothing is uploaded) and
           are there whenever you come back. Loading one makes it the active experiment everywhere,
           exactly like a built-in chip: every view sweeps over its ranges, and the reset ↺ button
           returns to its values.

@@ -100,7 +100,7 @@ const MARKS = Object.entries(PRESETS)
 
 export default {
   id: 'loe',
-  label: 'Worldline (L/E)',
+  label: 'Worldline',
   extras: [
     { key: 'cMue', type: 'checkbox', label: 'νμ→νe', lock: (s) => s.channel === 'mue' },
     { key: 'cMumu', type: 'checkbox', label: 'νμ→νμ', lock: (s) => s.channel === 'mumu' },

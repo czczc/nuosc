@@ -1,4 +1,4 @@
-// Hash-based routes (GitHub Pages friendly): #/<view> for the 5 views,
+// Hash-based routes (GitHub Pages friendly): #/<view> for the views,
 // #/faq/<section?> for the FAQ page. The URL is the source of truth for
 // view/faq navigation — a guard syncs it into the reactive store, which the
 // components keep reading as before.
