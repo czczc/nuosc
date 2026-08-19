@@ -4,8 +4,9 @@ import * as THREE from 'three';
 import { SceneBase, PALETTES, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
 import {
-  engineParams, PRESETS, eRangeOf, lRangeOf, CHANNELS, pLabel, eUnitOf, eStepOf, lStepOf, fmtE,
+  engineParams, PRESETS, eRangeOf, lRangeOf, CHANNELS, pLabel, eUnitOf, fmtE,
 } from '../engines/constants.js';
+import { driveShared, modeDef } from '../animModes.js';
 import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
@@ -43,16 +44,9 @@ export default {
       ],
     },
     {
+      // shared animation modes (animModes.js): built-ins + user-defined
       key: 'marker', type: 'marker', label: 'animate', step: 0.002,
-      select: {
-        key: 'anim',
-        options: [
-          { value: 'L', label: 'L' },
-          { value: 'E', label: 'E' },
-          { value: 'dcp', label: 'δCP' },
-          { value: 'rho', label: 'ρ' },
-        ],
-      },
+      select: { key: 'anim' },
     },
   ],
 
@@ -164,19 +158,11 @@ export default {
     function tick(dt) {
       const vs = store.views.oscillogram;
       if (vs.play) vs.marker = (vs.marker + dt / LOOP_S) % 1;
-      if (vs.marker !== lastMarker) {
-        const [v0, v1] = vs.anim === 'L' ? lRangeOf(store.basePreset)
-          : vs.anim === 'E' ? eRangeOf(store.basePreset) : RANGES[vs.anim];
-        const v = v0 + vs.marker * (v1 - v0);
-        // rounded to the shared sliders' steps
-        if (vs.anim === 'L') { const s = lStepOf(store.basePreset); store.L = Math.round(v / s) * s; }
-        else if (vs.anim === 'E') { const s = eStepOf(store.basePreset); store.E = Math.round(v / s) * s; }
-        else if (vs.anim === 'rho') store.rho = Math.round(v / 0.05) * 0.05;
-        else store.dcp = Math.round(v);
-      }
+      if (vs.marker !== lastMarker) driveShared(store, vs.anim, vs.marker);
       lastMarker = vs.marker;
-      eSlice.visible = vs.anim === 'E';
-      if (vs.anim === 'E' && lastHeld && (!eApplied || eApplied.held !== lastHeld || eApplied.E !== store.E)) {
+      const animE = modeDef(vs.anim).param === 'E';
+      eSlice.visible = animE;
+      if (animE && lastHeld && (!eApplied || eApplied.held !== lastHeld || eApplied.E !== store.E)) {
         eApplied = { held: lastHeld, E: store.E };
         const x = ((store.E - lastHeld.E_MIN) / (lastHeld.E_MAX - lastHeld.E_MIN) - 0.5) * SX;
         const held = { dcp: lastHeld.dcp, L: lastHeld.L, rho: lastHeld.rho };
@@ -266,7 +252,7 @@ export default {
         }
         ctx.stroke();
       });
-      if (store.views.oscillogram.anim === 'E') {
+      if (modeDef(store.views.oscillogram.anim).param === 'E') {
         const mx = P.X(store.E * scale);
         ctx.strokeStyle = theme().hiCss;
         ctx.lineWidth = dpr;

@@ -33,8 +33,8 @@ export const store = reactive({
   views: {
     oscillogram: { axis2: 'L', anim: 'dcp', palette: 'rainbow', play: true, marker: 0.5 },
     tube: { mode: 'tube', anim: 'L', play: true, marker: 0.25 },
-    sphere: { sweep: 'L', pole: 'both', play: true, marker: 0 },
-    phasors: { xaxis: 'L', play: true, marker: 0 },
+    sphere: { anim: 'L', pole: 'both', play: true, marker: 0 },
+    phasors: { anim: 'L', play: true, marker: 0 },
     biprob: { showNO: true, showIO: true, showSurf: false, anim: 'E', play: true, marker: 0.5 },
     loe: {
       cMue: true, cMumu: true, cMutau: false, cEe: true, surf: true, exps: true, avg: true,

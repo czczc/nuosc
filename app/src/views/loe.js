@@ -10,8 +10,9 @@ import * as THREE from 'three';
 import { SceneBase, PALETTES, textSprite } from '../three/SceneBase.js';
 import { probabilityMatter } from '../engines/nufast.js';
 import {
-  engineParams, PRESETS, eRangeOf, lRangeOf, eUnitOf, eStepOf, lStepOf, fmtE, CHANNELS, channelLabel, pLabel,
+  engineParams, PRESETS, eRangeOf, lRangeOf, eUnitOf, fmtE, CHANNELS, channelLabel, pLabel,
 } from '../engines/constants.js';
+import { driveShared } from '../animModes.js';
 import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
@@ -118,16 +119,9 @@ export default {
       // L/E point and the white cross-section rides the surface at the fixed
       // baseline L (E and L move them, ρ morphs the surface through the vacuum
       // collapse at ρ = 0, δCP reshapes the curves)
+      // shared animation modes (animModes.js): built-ins + user-defined
       key: 'marker', type: 'marker', label: 'animate', step: 0.002,
-      select: {
-        key: 'anim',
-        options: [
-          { value: 'L', label: 'L' },
-          { value: 'E', label: 'E' },
-          { value: 'dcp', label: 'δCP' },
-          { value: 'rho', label: 'ρ' },
-        ],
-      },
+      select: { key: 'anim' },
     },
   ],
 
@@ -319,21 +313,7 @@ export default {
       if (vs.play) vs.marker = (vs.marker + dt / LOOP_S) % 1;
       // the marker drives the shared slider of the chosen variable (rounded to
       // its step, like the other views); manual slider drags stay untouched
-      if (vs.marker !== lastMarker) {
-        if (vs.anim === 'rho') {
-          store.rho = Math.round((vs.marker * 5) / 0.05) * 0.05;
-        } else if (vs.anim === 'dcp') {
-          store.dcp = Math.round(vs.marker * 360);
-        } else if (vs.anim === 'L') {
-          const Lmax = lRangeOf(store.basePreset)[1];
-          const s = lStepOf(store.basePreset);
-          store.L = Math.round((vs.marker * Lmax) / s) * s;
-        } else {
-          const [E0, E1] = eRangeOf(store.basePreset);
-          const s = eStepOf(store.basePreset);
-          store.E = Math.round((E0 + vs.marker * (E1 - E0)) / s) * s;
-        }
-      }
+      if (vs.marker !== lastMarker) driveShared(store, vs.anim, vs.marker);
       lastMarker = vs.marker;
       if (!cache) return;
       const frac = fracOfStore(store); // cross-section at the live L/E point

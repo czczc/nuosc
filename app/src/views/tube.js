@@ -7,7 +7,8 @@
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { hamiltonian, eigH, prob } from '../engines/jacobi.js';
-import { engineParams, lRangeOf, eRangeOf, CHANNELS, eUnitOf, eStepOf, lStepOf, fmtE } from '../engines/constants.js';
+import { engineParams, lRangeOf, eRangeOf, CHANNELS, eUnitOf, fmtE } from '../engines/constants.js';
+import { driveShared } from '../animModes.js';
 import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
@@ -59,15 +60,9 @@ export default {
       ],
     },
     {
+      // shared animation modes (animModes.js): built-ins + user-defined
       key: 'marker', type: 'marker', label: 'animate', step: 0.002,
-      select: {
-        key: 'anim',
-        options: [
-          { value: 'L', label: 'L' },
-          { value: 'E', label: 'E' },
-          { value: 'dcp', label: 'δCP' },
-        ],
-      },
+      select: { key: 'anim' },
     },
   ],
 
@@ -317,16 +312,7 @@ export default {
       // the marker drives the shared slider of the chosen variable (rounded to its
       // step); the disk always tracks the shared L, so dragging the L slider moves
       // the disk and both 2D plots too
-      if (st.marker !== lastMarker) {
-        if (st.anim === 'L') {
-          const s = lStepOf(store.basePreset);
-          store.L = Math.round((st.marker * lastLmax) / s) * s;
-        } else if (st.anim === 'E') {
-          const [v0, v1] = eRangeOf(store.basePreset);
-          const s = eStepOf(store.basePreset);
-          store.E = Math.round((v0 + st.marker * (v1 - v0)) / s) * s;
-        } else store.dcp = Math.round(st.marker * 360);
-      }
+      if (st.marker !== lastMarker) driveShared(store, st.anim, st.marker);
       lastMarker = st.marker;
       const ai = initOf(store);
       const frac = Math.max(0, Math.min(1, store.L / lastLmax));

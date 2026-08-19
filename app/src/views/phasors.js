@@ -6,32 +6,20 @@
 import * as THREE from 'three';
 import { SceneBase, textSprite } from '../three/SceneBase.js';
 import { C, hamiltonian, eigH, phasorTerms } from '../engines/jacobi.js';
-import { engineParams, DEG, eRangeOf, lRangeOf, CHANNELS, pLabel, eUnitOf, fmtE } from '../engines/constants.js';
+import { engineParams, CHANNELS, pLabel, eUnitOf } from '../engines/constants.js';
+import { modeDef, fmtSweep, epAt } from '../animModes.js';
 import { theme } from '../theme.js';
 import { plot2d } from './plot2d.js';
 
-const SX = 10, N = 1024, NSWEEP = 512;   // N samples for x = L (one eigH); NSWEEP for x = E / dcp (eigH per sample)
+const SX = 10, N = 1024, NSWEEP = 512;   // N samples for x = L (one eigH); NSWEEP for other sweeps (eigH per sample)
 // per-channel amplitude scale (typical |A| -> radius 2.5; the numu->nue appearance
 // amplitude is ~3x smaller than the others)
 const AMP_SCALE = { mue: 2.5 / 0.35, mumu: 2.5 / 1.0, mutau: 2.5 / 1.0, ee: 2.5 / 1.0 };
 const FLOOR_Y = -3, P_DEPTH = 4;         // floor curve at y = FLOOR_Y, toward -z (top view: up-screen), autoscaled so pmax spans P_DEPTH
 const COL = [0xe0a030, 0x4cb85e, 0xb070e0]; // arm 2 is green, not blue: the floor P curve is already blue
-const AXIS_LABEL = { L: 'L [km]', E: 'E [GeV]', dcp: 'δCP [deg]' };
 const LOOP_S = 10;                       // ~10 s per sweep of the marker
 
 function xOfFrac(f) { return -SX / 2 + SX * f; }
-
-function xRange(xaxis, preset) {
-  if (xaxis === 'E') return eRangeOf(preset);
-  if (xaxis === 'dcp') return [0, 360];
-  return lRangeOf(preset);
-}
-
-function fmtVal(xaxis, xv, preset) {
-  if (xaxis === 'E') return fmtE(xv, preset);
-  if (xaxis === 'dcp') return `${xv.toFixed(0)}°`;
-  return `${xv.toFixed(0)} km`;
-}
 
 // Matter-eigenstate terms of the (alpha)->(beta) amplitude, sorted by eigenvalue ascending
 // (stable arm color identity) with min(lam) subtracted (overall phase removal; |A|^2 unchanged).
@@ -42,11 +30,13 @@ function decompose(ep, E, rho, anti, alpha, beta) {
   return terms.map((t) => ({ c: t.c, lam: t.lam - lmin }));
 }
 
-// Terms at swept value xv; in the E and dcp modes the swept quantity overrides the held one.
-function decomposeAt(ep, xaxis, xv, E, rho, anti, alpha, beta) {
-  if (xaxis === 'E') return decompose(ep, xv, rho, anti, alpha, beta);
-  if (xaxis === 'dcp') return decompose({ ...ep, delta: xv * DEG }, E, rho, anti, alpha, beta);
-  return decompose(ep, E, rho, anti, alpha, beta);
+// Terms at swept value xv: the mode's parameter overrides the shared one
+// (E and ρ feed the hamiltonian; oscillation params rebuild the mixing).
+function decomposeAt(store, mode, xv, alpha, beta) {
+  const { param } = modeDef(mode, store);
+  const E = param === 'E' ? xv : store.E;
+  const rho = param === 'rho' ? xv : store.rho;
+  return decompose(epAt(mode, xv, store), E, rho, store.anti, alpha, beta);
 }
 
 // Running phasor sums at one L: [0, s1, s2, s3 = A], each a complex [re, im].
@@ -66,15 +56,9 @@ export default {
   note: 'Phasors = matter-eigenstate contributions to the transition amplitude of the channel selected in the header; overall phase removed; arm lengths |cᵢ| depend on E and ρ.',
   extras: [
     {
+      // shared animation modes (animModes.js): built-ins + user-defined
       key: 'marker', type: 'marker', label: 'animate', step: 0.002,
-      select: {
-        key: 'xaxis',
-        options: [
-          { value: 'L', label: 'L' },
-          { value: 'E', label: 'E' },
-          { value: 'dcp', label: 'δCP' },
-        ],
-      },
+      select: { key: 'anim' },
     },
   ],
 
@@ -132,15 +116,16 @@ export default {
 
     function update() {
       const ep = engineParams(store);
-      const { xaxis } = store.views.phasors; // NOT play/marker (tick-only, per contract)
+      const mode = store.views.phasors.anim; // NOT play/marker (tick-only, per contract)
       const channel = store.channel;
       const { a: alpha, b: beta } = CHANNELS[channel];
       ampScale = AMP_SCALE[channel];
       const E = store.E;
       const rho = store.rho, anti = store.anti, Lfix = store.L;
-      const [x0, x1] = xRange(xaxis, store.basePreset);
-      const M = xaxis === 'L' ? N : NSWEEP;
-      const d0 = xaxis === 'L' ? decompose(ep, E, rho, anti, alpha, beta) : null; // one eigH when x = L
+      const { param, lo: x0, hi: x1, axis } = modeDef(mode, store);
+      const isL = param === 'L';
+      const M = isL ? N : NSWEEP;
+      const d0 = isL ? decompose(ep, E, rho, anti, alpha, beta) : null; // one eigH when x = L
 
       const p1 = s1Line.geometry.attributes.position;
       const p2 = s2Line.geometry.attributes.position;
@@ -150,8 +135,8 @@ export default {
         const f = i / (M - 1);
         const xv = x0 + f * (x1 - x0);
         const x = xOfFrac(f);
-        const terms = d0 ?? decomposeAt(ep, xaxis, xv, E, rho, anti, alpha, beta);
-        const pts = partials(terms, xaxis === 'L' ? xv : Lfix); // fixed shared L anchors the phase when x != L
+        const terms = d0 ?? decomposeAt(store, mode, xv, alpha, beta);
+        const pts = partials(terms, isL ? xv : Lfix); // fixed shared L anchors the phase when x != L
         p1.setXYZ(i, x, ampScale * pts[1][1], ampScale * pts[1][0]);
         p2.setXYZ(i, x, ampScale * pts[2][1], ampScale * pts[2][0]);
         pA.setXYZ(i, x, ampScale * pts[3][1], ampScale * pts[3][0]);
@@ -171,9 +156,9 @@ export default {
       }
 
       const { unit, scale } = eUnitOf(store.basePreset);
-      const key = xaxis === 'E'
+      const key = param === 'E'
         ? `E [${unit}]  (${+(x0 * scale).toFixed(4)} - ${+(x1 * scale).toFixed(4)})`
-        : `${AXIS_LABEL[xaxis]}  (${x0} - ${x1})`;
+        : `${axis}  (${x0} - ${x1})`;
       if (key !== lastLabelKey) {
         if (xLabel) base.scene.remove(xLabel);
         xLabel = textSprite(key);
@@ -192,8 +177,8 @@ export default {
 
       armState = (frac) => {
         const xv = x0 + frac * (x1 - x0);
-        const terms = d0 ?? decomposeAt(ep, xaxis, xv, E, rho, anti, alpha, beta);
-        const pts = partials(terms, xaxis === 'L' ? xv : Lfix);
+        const terms = d0 ?? decomposeAt(store, mode, xv, alpha, beta);
+        const pts = partials(terms, isL ? xv : Lfix);
         return { xv, terms, pts, P: C.abs2(pts[3]) };
       };
     }
@@ -239,18 +224,15 @@ export default {
 
     function probe() {
       if (!last) return null;
-      const xaxis = store.views.phasors.xaxis;
-      const name = xaxis === 'dcp' ? 'δCP' : xaxis;
       const mags = last.terms.map((t) => Math.sqrt(C.abs2(t.c)).toFixed(3));
-      return `${name} ${fmtVal(xaxis, last.xv, store.basePreset)} · |c1| ${mags[0]} · |c2| ${mags[1]} · |c3| ${mags[2]} · P ${last.P.toFixed(4)}`;
+      return `${fmtSweep(store.views.phasors.anim, last.xv, store)} · |c1| ${mags[0]} · |c2| ${mags[1]} · |c3| ${mags[2]} · P ${last.P.toFixed(4)}`;
     }
 
     return { base, update, tick, probe, dispose: () => base.dispose() };
   },
 
   companion: {
-    title: (store) => `${pLabel(store.channel, store.anti)} vs ${store.views.phasors.xaxis === 'E'
-      ? `E [${eUnitOf(store.basePreset).unit}]` : AXIS_LABEL[store.views.phasors.xaxis]}`,
+    title: (store) => `${pLabel(store.channel, store.anti)} vs ${modeDef(store.views.phasors.anim, store).axis}`,
     markerDriven: true,
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
@@ -260,26 +242,27 @@ export default {
       ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
       const ep = engineParams(store);
-      const { xaxis, marker } = store.views.phasors; // marker OK here: markerDriven
+      const { anim: mode, marker } = store.views.phasors; // marker OK here: markerDriven
       const { a: alpha, b: beta } = CHANNELS[store.channel];
       const E = store.E;
-      const [x0, x1] = xRange(xaxis, store.basePreset);
-      const scale = xaxis === 'E' ? eUnitOf(store.basePreset).scale : 1; // x axis in display units
+      const { param, lo: x0, hi: x1, axis } = modeDef(mode, store);
+      const isL = param === 'L';
+      const scale = param === 'E' ? eUnitOf(store.basePreset).scale : 1; // x axis in display units
       const NPT = 240;
-      const d0 = xaxis === 'L' ? decompose(ep, E, store.rho, store.anti, alpha, beta) : null;
+      const d0 = isL ? decompose(ep, E, store.rho, store.anti, alpha, beta) : null;
       const ys = new Float32Array(NPT);
       let pmax = 1e-6;
       for (let i = 0; i < NPT; i++) {
         const xv = x0 + (x1 - x0) * i / (NPT - 1);
-        const terms = d0 ?? decomposeAt(ep, xaxis, xv, E, store.rho, store.anti, alpha, beta);
-        const pts = partials(terms, xaxis === 'L' ? xv : store.L);
+        const terms = d0 ?? decomposeAt(store, mode, xv, alpha, beta);
+        const pts = partials(terms, isL ? xv : store.L);
         ys[i] = C.abs2(pts[3]);
         if (ys[i] > pmax) pmax = ys[i];
       }
 
       const P = plot2d(ctx, w, h, dpr, {
         x: [x0 * scale, x1 * scale], y: [0, pmax * 1.08],
-        xTitle: xaxis === 'E' ? `E [${eUnitOf(store.basePreset).unit}]` : AXIS_LABEL[xaxis],
+        xTitle: axis,
         yTitle: pLabel(store.channel, store.anti),
       });
 

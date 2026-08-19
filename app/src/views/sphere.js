@@ -6,35 +6,36 @@
 import * as THREE from 'three';
 import { SceneBase, viridis, textSprite } from '../three/SceneBase.js';
 import { C, hamiltonian, eigH, amp, prob } from '../engines/jacobi.js';
-import { engineParams, DEG, eRangeOf, lRangeOf, CHANNELS, eUnitOf, fmtE } from '../engines/constants.js';
+import { engineParams, CHANNELS, eUnitOf } from '../engines/constants.js';
+import { modeDef, fmtSweep, epAt } from '../animModes.js';
 import { theme } from '../theme.js';
 import { plot2d, legend } from './plot2d.js';
 
 const R = 2.5;                 // sphere radius in world units
-const NSAMP = 1024;            // trajectory buffer size (L sweep; E/dcp use 512 via setDrawRange)
+const NSAMP = 1024;            // trajectory buffer size (L sweep; other sweeps use 512 via setDrawRange)
 const PERIOD_S = 10;           // play loop: marker sweeps the full range over ~10 s
-const SWEEP_LABEL = { L: 'L [km]', E: 'E [GeV]', dcp: 'δCP [°]' };
-// E sweeps display in the experiment's unit (MeV for reactors)
-const sweepLabel = (sweep, store) => (sweep === 'E' ? `E [${eUnitOf(store.basePreset).unit}]` : SWEEP_LABEL[sweep]);
 
-// Sweep context from the store: range [lo, hi] and stateAt(sv) -> {eig, L}.
-// sweep=L needs one eigH total; sweep=E/dcp rebuilds hamiltonian+eigH per sample.
+// Sweep context from the store: the anim mode's [lo, hi] span and stateAt(sv) -> {eig, L}.
+// L-sweeps need one eigH total; the other sweeps rebuild hamiltonian+eigH per sample.
 function makeSweep(store) {
   const ep = engineParams(store);
-  const vs = store.views.sphere;
-  const sweep = vs.sweep;
+  const mode = store.views.sphere.anim;
+  const { param, lo, hi } = modeDef(mode, store);
   const rho = store.rho, anti = store.anti, Lfixed = store.L, Efixed = store.E;
-  if (sweep === 'L') {
+  if (param === 'L') {
     const eig = eigH(hamiltonian(ep, Efixed, rho, anti));
-    return { sweep, lo: 0, hi: lRangeOf(store.basePreset)[1], stateAt: (sv) => ({ eig, L: sv }) };
+    return { mode, param, lo, hi, stateAt: (sv) => ({ eig, L: sv }) };
   }
-  if (sweep === 'E') {
-    const [lo, hi] = eRangeOf(store.basePreset);
-    return { sweep, lo, hi, stateAt: (sv) => ({ eig: eigH(hamiltonian(ep, sv, rho, anti)), L: Lfixed }) };
+  if (param === 'E') {
+    return { mode, param, lo, hi, stateAt: (sv) => ({ eig: eigH(hamiltonian(ep, sv, rho, anti)), L: Lfixed }) };
   }
+  if (param === 'rho') {
+    return { mode, param, lo, hi, stateAt: (sv) => ({ eig: eigH(hamiltonian(ep, Efixed, sv, anti)), L: Lfixed }) };
+  }
+  // oscillation parameter (δCP, θij, Δm²): the mixing is rebuilt per sample
   return {
-    sweep, lo: 0, hi: 360,
-    stateAt: (sv) => ({ eig: eigH(hamiltonian({ ...ep, delta: sv * DEG }, Efixed, rho, anti)), L: Lfixed }),
+    mode, param, lo, hi,
+    stateAt: (sv) => ({ eig: eigH(hamiltonian(epAt(mode, sv, store), Efixed, rho, anti)), L: Lfixed }),
   };
 }
 
@@ -75,15 +76,9 @@ export default {
       ],
     },
     {
+      // shared animation modes (animModes.js): built-ins + user-defined
       key: 'marker', type: 'marker', label: 'animate', step: 0.002,
-      select: {
-        key: 'sweep',
-        options: [
-          { value: 'L', label: 'L' },
-          { value: 'E', label: 'E' },
-          { value: 'dcp', label: 'δCP' },
-        ],
-      },
+      select: { key: 'anim' },
     },
   ],
 
@@ -158,7 +153,7 @@ export default {
     let markerState = null;
 
     function update() {
-      const { sweep, lo, hi, stateAt } = makeSweep(store);
+      const { mode, param, lo, hi, stateAt } = makeSweep(store);
       const pole = store.views.sphere.pole;
       const ai = initOf(store);
       const [o1, o2] = OTHERS[ai];
@@ -193,7 +188,7 @@ export default {
       sets.A.traj.line.visible = sets.A.arrow.group.visible = showA;
       sets.B.traj.line.visible = sets.B.arrow.group.visible = showB;
 
-      const n = sweep === 'L' ? NSAMP : 512;
+      const n = param === 'L' ? NSAMP : 512;
       const posA = sets.A.traj.geo.attributes.position, colA = sets.A.traj.geo.attributes.color;
       const posB = sets.B.traj.geo.attributes.position, colB = sets.B.traj.geo.attributes.color;
       for (let i = 0; i < n; i++) {
@@ -224,7 +219,7 @@ export default {
       markerState = (frac) => {
         const sv = lo + frac * (hi - lo);
         const st = stateAt(sv);
-        return { sweep, sv, o1, o2, ...blochPair(st.eig, st.L, ai, o1, o2) };
+        return { mode, sv, o1, o2, ...blochPair(st.eig, st.L, ai, o1, o2) };
       };
     }
 
@@ -242,9 +237,7 @@ export default {
       if (!markerState) return null;
       const pole = store.views.sphere.pole;
       const st = markerState(store.views.sphere.marker);
-      const name = st.sweep === 'L' ? `L ${Math.round(st.sv)} km`
-        : st.sweep === 'E' ? `E ${fmtE(st.sv, store.basePreset)}`
-        : `δCP ${Math.round(st.sv)}°`;
+      const name = fmtSweep(st.mode, st.sv, store);
       const bnA = Math.hypot(st.bA[0], st.bA[1], st.bA[2]);
       const bnB = Math.hypot(st.bB[0], st.bB[1], st.bB[2]);
       const btxt = pole === 'both' ? `|b(${FLAV[st.o1].name})| ${bnA.toFixed(4)} |b(${FLAV[st.o2].name})| ${bnB.toFixed(4)}`
@@ -256,7 +249,7 @@ export default {
   },
 
   companion: {
-    title: (store) => `P vs ${sweepLabel(store.views.sphere.sweep, store)}`,
+    title: (store) => `P vs ${modeDef(store.views.sphere.anim, store).axis}`,
     markerDriven: true,
     draw(canvas, store) {
       const dpr = window.devicePixelRatio || 1;
@@ -265,9 +258,9 @@ export default {
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = theme().canvas; ctx.fillRect(0, 0, w, h);
 
-      const { sweep, lo, hi, stateAt } = makeSweep(store);
+      const { mode, param, lo, hi, stateAt } = makeSweep(store);
       const ai = initOf(store);
-      const scale = sweep === 'E' ? eUnitOf(store.basePreset).scale : 1; // x axis in display units
+      const scale = param === 'E' ? eUnitOf(store.basePreset).scale : 1; // x axis in display units
       const NPT = 200;
       const series = [
         { beta: 0, color: FLAV[0].css, label: 'Pe' },
@@ -282,7 +275,7 @@ export default {
 
       const P = plot2d(ctx, w, h, dpr, {
         x: [lo * scale, hi * scale], y: [0, 1],
-        xTitle: sweepLabel(sweep, store), yTitle: `P(${FLAV[ai].name}→νx)`,
+        xTitle: modeDef(mode, store).axis, yTitle: `P(${FLAV[ai].name}→νx)`,
       });
       ys.forEach((yv, si) => {
         ctx.strokeStyle = series[si].color;

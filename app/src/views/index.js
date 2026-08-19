@@ -5,6 +5,9 @@
 //     { key, type: 'select', label, options: [{value,label}] }       // bound to store.views[id][key]
 //     { key, type: 'checkbox', label }
 //     { key, type: 'range', label, min, max, step, unit? }
+//     { key: 'marker', type: 'marker', label, step, select: { key: 'anim' } }
+//                                   // play/marker row; the select's options are the shared
+//                                   // animation modes (animModes.js), identical in every view
 //   ],
 //   create(container, store) -> {
 //     base: SceneBase,
